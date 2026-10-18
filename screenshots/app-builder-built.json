@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "ORRIS — Objects for a considered life",
+      "hasCanvas": false,
+      "bodyTextLen": 1817,
+      "bodyTextHash": "f7ed0f808e4f0eef434ad3ba1c556b48c9a7872bb1a5fb7f55ee61a41d5fc781",
+      "bodyTextPrefix": "COMPLIMENTARY STANDARD SHIPPING ON ORDERS OVER $250 ORRIS Shop T",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "ORRIS — Objects for a considered life",
+      "hasCanvas": false,
+      "bodyTextLen": 1769,
+      "bodyTextHash": "6d6071765dedfbea02a9ab6907e59c5b3dc491b8ebcf2d82ad156721d1da68a4",
+      "bodyTextPrefix": "COMPLIMENTARY STANDARD SHIPPING ON ORDERS OVER $250 ORRIS AUTUMN",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-built.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
+}
