@@ -3,6 +3,7 @@ import { useState } from "react";
 import { StoreShell } from "@/components/store/shell";
 import { Button, Field } from "@/components/ui";
 import { lookupOrder } from "@/lib/commerce/fns";
+import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/orders")({
   component: LookupPage,
@@ -11,12 +12,13 @@ export const Route = createFileRoute("/orders")({
 
 function LookupPage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const [error, setError] = useState("");
   return (
     <StoreShell>
       <main className="mx-auto max-w-md px-4 py-16">
-        <h1 className="text-4xl">Find an order</h1>
-        <p className="mt-3 text-sm leading-6 text-ash">Enter the order number and the email used at checkout. One without the other is not enough.</p>
+        <h1 className="text-4xl">{t("lookup.title")}</h1>
+        <p className="mt-3 text-sm leading-6 text-ash">{t("lookup.body")}</p>
         <form
           className="mt-8 space-y-4"
           onSubmit={(event) => {
@@ -27,7 +29,7 @@ function LookupPage() {
             setError("");
             void lookupOrder({ data: { number, email } }).then((order) => {
               if (!order) {
-                setError("No order matches that number and email.");
+                setError(t("lookup.missing"));
                 return;
               }
               void navigate({
@@ -38,10 +40,10 @@ function LookupPage() {
             });
           }}
         >
-          <Field label="Order number" name="number" required placeholder="OR-18421" />
-          <Field label="Email" name="email" type="email" required />
+          <Field label={t("lookup.number")} name="number" required placeholder="OR-18421" />
+          <Field label={t("lookup.email")} name="email" type="email" required />
           {error ? <p className="text-sm text-danger">{error}</p> : null}
-          <Button type="submit">Look up</Button>
+          <Button type="submit">{t("lookup.submit")}</Button>
         </form>
       </main>
     </StoreShell>

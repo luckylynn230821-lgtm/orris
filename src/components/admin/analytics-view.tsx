@@ -1,18 +1,13 @@
 import { useEffect, useState } from "react";
 import { adminAnalytics } from "@/lib/commerce/fns";
+import { useT } from "@/lib/i18n/provider";
+import type { MessageKey } from "@/lib/i18n/translate";
 import type { RangeKey } from "@/lib/commerce/metrics";
 
-export const RANGES: { id: RangeKey; label: string }[] = [
-  { id: "today", label: "Today" },
-  { id: "yesterday", label: "Yesterday" },
-  { id: "7d", label: "7 days" },
-  { id: "30d", label: "30 days" },
-  { id: "month", label: "This month" },
-  { id: "last_month", label: "Last month" },
-  { id: "year", label: "This year" },
-];
+const RANGE_IDS: RangeKey[] = ["today", "yesterday", "7d", "30d", "month", "last_month", "year"];
 
 export function useAnalytics(range: RangeKey, includeDemo: boolean) {
+  const { tx } = useT();
   const [data, setData] = useState<Awaited<ReturnType<typeof adminAnalytics>> | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -27,7 +22,7 @@ export function useAnalytics(range: RangeKey, includeDemo: boolean) {
       })
       .catch((err: unknown) => {
         if (!live) return;
-        setError(err instanceof Error ? err.message : "Could not load the books");
+        setError(err instanceof Error ? tx(err.message) : tx("admin.booksFailed"));
       })
       .finally(() => live && setLoading(false));
     return () => {
@@ -48,20 +43,21 @@ export function RangeBar({
   includeDemo: boolean;
   setIncludeDemo: (value: boolean) => void;
 }) {
+  const { t } = useT();
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {RANGES.map((item) => (
+      {RANGE_IDS.map((id) => (
         <button
-          key={item.id}
-          onClick={() => setRange(item.id)}
-          className={range === item.id ? "h-9 bg-ink px-3 text-xs text-ivory" : "h-9 border border-line bg-paper px-3 text-xs"}
+          key={id}
+          onClick={() => setRange(id)}
+          className={range === id ? "h-9 bg-ink px-3 text-xs text-ivory" : "h-9 border border-line bg-paper px-3 text-xs"}
         >
-          {item.label}
+          {t(`range.${id}` as MessageKey)}
         </button>
       ))}
       <label className="ml-auto flex items-center gap-2 text-xs text-ash">
         <input type="checkbox" checked={includeDemo} onChange={(event) => setIncludeDemo(event.target.checked)} />
-        Include sample history
+        {t("admin.includeSample")}
       </label>
     </div>
   );

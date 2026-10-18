@@ -5,6 +5,7 @@ import { AdminError } from "@/components/admin/frame";
 import { Button, Field } from "@/components/ui";
 import { adminGetProduct, adminProducts, adminSaveImage, adminSaveProduct, adminUpdateImage } from "@/lib/commerce/fns";
 import { centsToInput, dollarsToCents } from "@/lib/format";
+import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/admin/products/$id")({
   component: Editor,
@@ -31,6 +32,7 @@ function blankVariant(): VariantDraft {
 
 function Editor() {
   const { id } = Route.useParams();
+  const { t } = useT();
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
@@ -129,7 +131,7 @@ function Editor() {
           .finally(() => setSaving(false));
       }}
     >
-      <h1 className="text-4xl">{id === "new" ? "New product" : "Edit product"}</h1>
+      <h1 className="text-4xl">{id === "new" ? t("admin.newProduct") : t("admin.editProduct")}</h1>
       {error ? <AdminError message={error} /> : null}
       <Field label="Name" value={name} onChange={(event) => setName(event.target.value)} required />
       <Field label="Slug" value={slug} onChange={(event) => setSlug(event.target.value)} placeholder="left blank to generate" />

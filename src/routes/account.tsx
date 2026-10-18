@@ -1,58 +1,87 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { CustomerOrderCard, type CustomerOrder } from "@/components/store/customer-order";
 import { StoreShell } from "@/components/store/shell";
 import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { myOrders } from "@/lib/commerce/fns";
-import { money } from "@/lib/format";
+import { useT } from "@/lib/i18n/provider";
+import type { MessageKey } from "@/lib/i18n/translate";
+
+const TABS = ["all", "unpaid", "toship", "toreceive", "toreview", "aftersales"] as const;
 
 export const Route = createFileRoute("/account")({
   component: AccountPage,
-  head: () => ({ meta: [{ title: "Account — ORRIS" }] }),
+  head: () => ({ meta: [{ title: "My orders — ORRIS" }] }),
 });
 
 function AccountPage() {
+  const { t } = useT();
   const { user, isPending } = useCurrentUserState();
-  const [orders, setOrders] = useState<Awaited<ReturnType<typeof myOrders>> | null>(null);
+  const [tab, setTab] = useState<(typeof TABS)[number]>("all");
+  const [orders, setOrders] = useState<CustomerOrder[] | null>(null);
+  const [fresh, setFresh] = useState(false);
   useEffect(() => {
     if (!user) return;
     let live = true;
-    void myOrders()
-      .then((rows) => live && setOrders(rows))
-      .catch(() => live && setOrders([]));
+    let previous = "";
+    const tick = () =>
+      myOrders()
+        .then((rows) => {
+          if (!live) return;
+          const next = JSON.stringify(rows.map((row) => [row.number, row.stageKey, row.stageDetail, row.tracking]));
+          if (previous && previous !== next) setFresh(true);
+          previous = next;
+          setOrders(rows);
+        })
+        .catch(() => live && setOrders([]));
+    void tick();
+    const timer = setInterval(() => void tick(), 4000);
     return () => {
       live = false;
+      clearInterval(timer);
     };
   }, [user?.id]);
+  const visible = (orders ?? []).filter((order) => tab === "all" || order.stageKey === tab);
+
   return (
     <StoreShell>
-      <main className="mx-auto max-w-2xl px-4 py-14">
-        <h1 className="text-4xl">Account</h1>
-        {isPending ? <p className="mt-6 text-sm text-ash">Checking your session…</p> : null}
+      <main className="mx-auto max-w-3xl px-4 py-12">
+        <p className="text-xs tracking-[0.18em] text-ash uppercase">{t("account.kicker")}</p>
+        <h1 className="mt-2 text-5xl">{t("account.title")}</h1>
+        <p className="mt-3 max-w-lg text-sm leading-6 text-ash">{t("account.body")}</p>
+        {isPending ? <p className="mt-6 text-sm text-ash">{t("account.checking")}</p> : null}
         {!isPending && !user ? (
-          <p className="mt-6 text-sm leading-6">
-            You can shop as a guest. Sign in to see orders placed with the same email.{" "}
-            <Link to="/login" className="underline">Sign in</Link>
+          <p className="mt-8 text-sm leading-7">
+            {t("account.signedOut")}
+            <Link to="/login" search={{ next: "account" }} className="mx-1 underline">{t("account.signIn")}</Link>.
           </p>
         ) : null}
         {user ? (
           <div className="mt-6">
-            <div className="flex items-center justify-between">
-              <p className="text-sm">{user.primaryEmail}</p>
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <p>{user.primaryEmail}</p>
               <UserButton />
             </div>
-            <h2 className="mt-10 text-2xl">Your orders</h2>
-            {!orders ? <p className="mt-3 text-sm text-ash">Loading…</p> : null}
-            {orders && orders.length === 0 ? <p className="mt-3 text-sm text-ash">No orders are tied to this account yet.</p> : null}
-            <ul className="mt-4 divide-y divide-line border-y border-line text-sm">
-              {orders?.map((order) => (
-                <li key={order.number} className="flex items-center justify-between py-3">
-                  <span>{order.number}</span>
-                  <span className="capitalize text-ash">{order.status}</span>
-                  <span className="tabular-nums">{money(order.totalCents)}</span>
-                </li>
+            {fresh ? <p className="mt-3 text-sm">{t("account.updated")}</p> : null}
+            <div className="mt-6 flex gap-2 overflow-auto">
+              {TABS.map((key) => (
+                <button
+                  key={key}
+                  className={key === tab ? "h-11 shrink-0 border border-ink px-3 text-sm" : "h-11 shrink-0 border border-line px-3 text-sm"}
+                  onClick={() => setTab(key)}
+                >
+                  {t(`account.${key}` as MessageKey)}
+                </button>
               ))}
-            </ul>
+            </div>
+            {!orders ? <p className="mt-6 text-sm text-ash">{t("account.loading")}</p> : null}
+            {orders && visible.length === 0 ? <p className="mt-6 text-sm text-ash">{t("account.empty")}</p> : null}
+            <div className="mt-4 space-y-4">
+              {visible.map((order) => (
+                <CustomerOrderCard key={order.number} order={order} onChange={() => void myOrders().then(setOrders)} />
+              ))}
+            </div>
           </div>
         ) : null}
       </main>

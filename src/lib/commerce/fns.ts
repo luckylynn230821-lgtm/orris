@@ -20,7 +20,7 @@ function guard<T>(fn: () => Promise<T>): Promise<T> {
   return fn().catch((error: unknown) => {
     if (isCommerceError(error)) throw error;
     console.error(error);
-    throw new Error("That didn't work. Nothing was changed.");
+    throw new Error("err.generic");
   });
 }
 
@@ -96,6 +96,7 @@ export const trackEvent = createServerFn({ method: "POST" })
   });
 
 export const lookupOrder = createServerFn({ method: "POST" })
+  .middleware([optionalUser])
   .validator((input: unknown) =>
     z
       .object({
@@ -105,9 +106,9 @@ export const lookupOrder = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data }) => {
-    const { loadOrderAccess } = await import("./catalog.server");
-    return loadOrderAccess(data);
+  .handler(async ({ data, context }) => {
+    const { viewOrder } = await import("./customer.server");
+    return viewOrder({ ...data, sessionEmail: context.email });
   });
 
 export const checkout = createServerFn({ method: "POST" })
@@ -136,8 +137,51 @@ export const checkout = createServerFn({ method: "POST" })
 export const myOrders = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
-    const { loadMyOrders } = await import("./checkout.server");
-    return loadMyOrders(context.userId);
+    const { listMyOrders } = await import("./customer.server");
+    return listMyOrders(context.userId);
+  });
+
+const proofSchema = z.object({
+  number: z.string().min(3).max(40),
+  token: z.string().optional(),
+});
+
+function proofOf(data: { token?: string }, email: string | null) {
+  return { email, token: data.token ?? null };
+}
+
+export const customerPay = createServerFn({ method: "POST" })
+  .middleware([optionalUser])
+  .validator((input: unknown) => proofSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { payOrder } = await import("./customer.server");
+    return guard(() => payOrder(data.number, proofOf(data, context.email)));
+  });
+
+export const customerReceive = createServerFn({ method: "POST" })
+  .middleware([optionalUser])
+  .validator((input: unknown) => proofSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { receiveOrder } = await import("./customer.server");
+    return guard(() => receiveOrder(data.number, proofOf(data, context.email)));
+  });
+
+export const customerReview = createServerFn({ method: "POST" })
+  .middleware([optionalUser])
+  .validator((input: unknown) =>
+    proofSchema.extend({ rating: z.number().int().min(1).max(5), body: z.string().max(500) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { reviewOrder } = await import("./customer.server");
+    return guard(() => reviewOrder(data.number, proofOf(data, context.email), data.rating, data.body));
+  });
+
+export const customerService = createServerFn({ method: "POST" })
+  .middleware([optionalUser])
+  .validator((input: unknown) => proofSchema.extend({ reason: z.string().trim().min(2).max(300) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { requestService } = await import("./customer.server");
+    return guard(() => requestService(data.number, proofOf(data, context.email), data.reason));
   });
 
 const rangeSchema = z.object({
@@ -327,6 +371,16 @@ export const adminCancel = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { cancelOrder } = await import("./admin.server");
     return guard(() => cancelOrder(context.userId, data.id));
+  });
+
+export const adminResolveService = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) =>
+    z.object({ id: z.string().min(1), action: z.enum(["refund", "reject"]), restock: z.boolean() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { resolveService } = await import("./admin.server");
+    return guard(() => resolveService(context.userId, data));
   });
 
 export const adminCustomers = createServerFn({ method: "GET" })

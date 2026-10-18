@@ -2,6 +2,8 @@ import { getSql } from "@/lib/db";
 import { asJson, iso, num, slugify } from "@/lib/format";
 import { loadAllProducts, loadCategories, readSettings } from "./catalog.server";
 import { userError } from "./errors";
+import { stageOf } from "./stages";
+import { faceFor } from "./customer.server";
 import { ensureSeeded } from "./seed.server";
 import { withTx } from "./tx.server";
 
@@ -369,7 +371,9 @@ export async function listOrders(userId: string, q: string) {
   const query = `%${q.trim().toLowerCase()}%`;
   const rows = await sql<Record<string, unknown>>`
     select id, number, email, customer_name, status, payment_status, fulfillment_status,
-           total_cents, refunded_cents, currency, is_demo, created_at
+           total_cents, refunded_cents, currency, is_demo, created_at,
+           exists(select 1 from order_reviews r where r.order_id = orders.id) as reviewed,
+           coalesce((select s.status from service_requests s where s.order_id = orders.id order by s.created_at desc limit 1), 'none') as service_status
     from orders
     where ${q.trim()} = '' or lower(number) like ${query} or lower(email) like ${query} or lower(customer_name) like ${query}
     order by created_at desc
@@ -388,6 +392,17 @@ export async function listOrders(userId: string, q: string) {
     currency: String(row.currency),
     isDemo: Boolean(row.is_demo),
     createdAt: iso(row.created_at),
+    ...(() => {
+      const stage = stageOf({
+        status: String(row.status),
+        paymentStatus: String(row.payment_status),
+        fulfillmentStatus: String(row.fulfillment_status),
+        reviewed: Boolean(row.reviewed),
+        serviceStatus: String(row.service_status ?? "none"),
+        isDemo: Boolean(row.is_demo),
+      });
+      return { stageKey: stage.key, stageLabel: stage.label, adminLabel: stage.admin };
+    })(),
   }));
 }
 
@@ -400,6 +415,7 @@ export async function orderDetail(userId: string, id: string) {
   const items = await sql<Record<string, unknown>>`select * from order_items where order_id = ${String(order.id)}`;
   const refunds = await sql<Record<string, unknown>>`select * from refunds where order_id = ${String(order.id)} order by created_at`;
   const fulfillments = await sql<Record<string, unknown>>`select * from fulfillments where order_id = ${String(order.id)} order by created_at`;
+  const story = await faceFor((text, params) => sql.query(text, params ?? []), String(order.id), order);
   return {
     id: String(order.id),
     number: String(order.number),
@@ -419,6 +435,13 @@ export async function orderDetail(userId: string, id: string) {
     address: asJson(order.shipping_address, {}),
     isDemo: Boolean(order.is_demo),
     createdAt: iso(order.created_at),
+    stageKey: story.stageKey,
+    stageLabel: story.stageLabel,
+    stageDetail: story.stageDetail,
+    adminLabel: story.adminLabel,
+    carrier: story.carrier,
+    tracking: story.tracking,
+    events: story.events,
     items: items.map((item) => ({
       id: String(item.id),
       name: String(item.product_name),
@@ -448,22 +471,32 @@ export async function orderDetail(userId: string, id: string) {
 export async function fulfillOrder(userId: string, input: { id: string; carrier: string; tracking: string }) {
   await actor(userId);
   await withTx(async (query) => {
-    const rows = await query<{ payment_status: string; number: string }>(
-      "select payment_status, number from orders where id = $1 for update",
+    const rows = await query<{ payment_status: string; fulfillment_status: string; number: string }>(
+      "select payment_status, fulfillment_status, number from orders where id = $1 for update",
       [input.id],
     );
     if (!rows[0]) throw userError("Order not found.");
     if (!["paid", "partially_refunded"].includes(rows[0].payment_status)) {
-      throw userError("Only paid orders can be fulfilled.");
+      throw userError("err.payFirst");
     }
+    if (rows[0].fulfillment_status === "shipped" || rows[0].fulfillment_status === "fulfilled") {
+      throw userError("err.alreadyShipped");
+    }
+    const carrier = input.carrier.trim() || "ORRIS dispatch";
+    const tracking = input.tracking.trim();
     await query(
-      `update orders set fulfillment_status = 'fulfilled', status = case when status = 'paid' then 'fulfilled' else status end where id = $1`,
+      `update orders set fulfillment_status = 'shipped' where id = $1`,
       [input.id],
     );
     await query(
-      `insert into fulfillments (id, order_id, carrier, tracking, status) values ($1, $2, $3, $4, 'fulfilled')`,
-      [crypto.randomUUID(), input.id, input.carrier.trim(), input.tracking.trim()],
+      `insert into fulfillments (id, order_id, carrier, tracking, status) values ($1, $2, $3, $4, 'shipped')`,
+      [crypto.randomUUID(), input.id, carrier, tracking],
     );
+    await query(`insert into order_events (id, order_id, message) values ($1, $2, $3)`, [
+      crypto.randomUUID(),
+      input.id,
+      `event.shipped\n${JSON.stringify({ carrier, tracking: tracking || "—" })}`,
+    ]);
   });
   await audit(userId, "fulfill", "order", input.id, { tracking: input.tracking });
   return { ok: true };
@@ -494,6 +527,11 @@ export async function refundOrder(userId: string, input: { id: string; amountCen
        where id = $1`,
       [input.id, refunded, payment],
     );
+    await query(`insert into order_events (id, order_id, message) values ($1, $2, $3)`, [
+      crypto.randomUUID(),
+      input.id,
+      `event.refunded\n${JSON.stringify({ amount: (input.amountCents / 100).toFixed(2) })}`,
+    ]);
     if (input.restock && full) {
       const items = await query<{ variant_id: string | null; qty: number; refunded_qty: number }>(
         "select variant_id, qty, refunded_qty from order_items where order_id = $1",
@@ -527,17 +565,59 @@ export async function cancelOrder(userId: string, id: string) {
   const remaining = detail.totalCents - detail.refundedCents;
   if (remaining > 0 && ["paid", "partially_refunded"].includes(detail.paymentStatus)) {
     await refundOrder(userId, { id: detail.id, amountCents: remaining, reason: "Cancelled", restock: true });
-  } else if (detail.paymentStatus === "paid" || detail.paymentStatus === "unpaid") {
+  } else if (detail.paymentStatus === "unpaid") {
     await withTx(async (query) => {
-      await query(
-        `update orders set status = 'cancelled', fulfillment_status = 'cancelled', payment_status = case when payment_status = 'unpaid' then 'failed' else payment_status end where id = $1`,
+      const items = await query<{ variant_id: string | null; qty: number }>(
+        "select variant_id, qty from order_items where order_id = $1",
         [detail.id],
       );
+      for (const item of items) {
+        if (!item.variant_id) continue;
+        await query("update product_variants set inventory_qty = inventory_qty + $1 where id = $2", [
+          num(item.qty),
+          item.variant_id,
+        ]);
+        await query(
+          `insert into inventory_movements (id, variant_id, qty_delta, reason, reference, note)
+           values ($1, $2, $3, 'cancel', $4, 'Unpaid order released')`,
+          [crypto.randomUUID(), item.variant_id, num(item.qty), detail.number],
+        );
+      }
+      await query(
+        `update orders set status = 'cancelled', fulfillment_status = 'cancelled', payment_status = 'failed' where id = $1`,
+        [detail.id],
+      );
+      await query(`insert into order_events (id, order_id, message) values ($1, $2, $3)`, [
+        crypto.randomUUID(),
+        detail.id,
+        "event.cancelledUnpaid",
+      ]);
     });
   }
   const sql = await getSql();
   await sql`update orders set status = 'cancelled', fulfillment_status = 'cancelled' where id = ${detail.id}`;
   await audit(userId, "cancel", "order", detail.id, {});
+  return { ok: true };
+}
+
+export async function resolveService(userId: string, input: { id: string; action: "refund" | "reject"; restock: boolean }) {
+  await actor(userId);
+  const detail = await orderDetail(userId, input.id);
+  if (!detail) throw userError("Order not found.");
+  const sql = await getSql();
+  const open = await sql<{ id: string; reason: string }>`
+    select id, reason from service_requests where order_id = ${detail.id} and status = 'open' order by created_at desc limit 1
+  `;
+  if (!open[0]) throw userError("err.noService");
+  if (input.action === "reject") {
+    await sql`update service_requests set status = 'rejected' where id = ${open[0].id}`;
+    await sql`insert into order_events (id, order_id, message) values (${crypto.randomUUID()}, ${detail.id}, ${"event.rejected"})`;
+    return { ok: true };
+  }
+  const remaining = detail.totalCents - detail.refundedCents;
+  if (remaining <= 0) throw userError("err.nothingToRefund");
+  await refundOrder(userId, { id: detail.id, amountCents: remaining, reason: open[0].reason, restock: input.restock });
+  await sql`update service_requests set status = 'approved' where id = ${open[0].id}`;
   return { ok: true };
 }
 

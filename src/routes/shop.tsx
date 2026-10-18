@@ -4,6 +4,7 @@ import { StoreShell } from "@/components/store/shell";
 import { Photo } from "@/components/ui";
 import { getShop } from "@/lib/commerce/fns";
 import { money } from "@/lib/format";
+import { useT } from "@/lib/i18n/provider";
 
 type ShopSearch = { q?: string; category?: string; sort?: string; stock?: string };
 
@@ -35,6 +36,7 @@ export const Route = createFileRoute("/shop")({
 
 function ShopPage() {
   const data = Route.useLoaderData();
+  const { t, copy } = useT();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const [filters, setFilters] = useState(false);
@@ -47,24 +49,24 @@ function ShopPage() {
   return (
     <StoreShell>
       <main className="mx-auto max-w-6xl px-4 py-10 md:px-6">
-        <p className="text-xs tracking-[0.2em] text-ash uppercase">{active ? active.name : "The collection"}</p>
-        <h1 className="mt-2 text-4xl md:text-5xl">{active ? active.name : search.q ? `“${search.q}”` : "All goods"}</h1>
+        <p className="text-xs tracking-[0.2em] text-ash uppercase">{active ? copy(active.name) : t("shop.collection")}</p>
+        <h1 className="mt-2 text-4xl md:text-5xl">{active ? copy(active.name) : search.q ? `“${search.q}”` : t("shop.allGoods")}</h1>
         <p className="mt-3 max-w-xl text-sm leading-6 text-ash">
-          {active?.description ?? `${data.products.length} pieces currently for sale. Prices and stock come from the shop records, not from the page.`}
+          {active?.description ? copy(active.description) : t("shop.count", { count: data.products.length })}
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3 text-sm">
-          <button className="h-11 border border-line px-4 md:hidden" onClick={() => setFilters(true)}>Filter</button>
+          <button className="h-11 border border-line px-4 md:hidden" onClick={() => setFilters(true)}>{t("shop.filter")}</button>
           <label className="ml-auto text-ash">
-            Sort
+            {t("shop.sort")}
             <select
               className="ml-2 h-11 border border-line bg-ivory px-2 text-ink"
               value={search.sort ?? "featured"}
               onChange={(event) => setSearch({ sort: event.target.value === "featured" ? undefined : event.target.value })}
             >
-              <option value="featured">Best selling</option>
-              <option value="newest">New</option>
-              <option value="price-asc">Price, low</option>
-              <option value="price-desc">Price, high</option>
+              <option value="featured">{t("shop.best")}</option>
+              <option value="newest">{t("shop.newest")}</option>
+              <option value="price-asc">{t("shop.priceLow")}</option>
+              <option value="price-desc">{t("shop.priceHigh")}</option>
             </select>
           </label>
         </div>
@@ -73,7 +75,7 @@ function ShopPage() {
             <FilterList />
           </aside>
           {data.products.length === 0 ? (
-            <p className="text-sm text-ash">Nothing matches. Try another room of the house.</p>
+            <p className="text-sm text-ash">{t("shop.empty")}</p>
           ) : (
             <div className="grid grid-cols-2 gap-x-4 gap-y-10 lg:grid-cols-3">
               {data.products.map((product) => (
@@ -81,10 +83,10 @@ function ShopPage() {
                   <div className="relative aspect-[3/4] bg-stone">
                     {product.images[0] ? <Photo src={product.images[0].url} alt={product.images[0].alt} /> : null}
                     {product.soldOut ? (
-                      <span className="absolute bottom-3 left-3 bg-ivory px-2 py-1 text-[11px] tracking-wide uppercase">Sold out</span>
+                      <span className="absolute bottom-3 left-3 bg-ivory px-2 py-1 text-[11px] tracking-wide uppercase">{t("shop.soldOut")}</span>
                     ) : null}
                   </div>
-                  <p className="mt-3 text-sm">{product.name}</p>
+                  <p className="mt-3 text-sm">{copy(product.name)}</p>
                   <p className="text-sm text-ash tabular-nums">{money(product.priceCents)}</p>
                 </Link>
               ))}
@@ -94,8 +96,8 @@ function ShopPage() {
         {filters ? (
           <div className="fixed inset-0 z-40 bg-ivory p-6 md:hidden">
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-3xl">Filter</h2>
-              <button className="text-sm underline" onClick={() => setFilters(false)}>Close</button>
+              <h2 className="text-3xl">{t("shop.filter")}</h2>
+              <button className="text-sm underline" onClick={() => setFilters(false)}>{t("shop.close")}</button>
             </div>
             <FilterList onDone={() => setFilters(false)} />
           </div>
@@ -109,12 +111,13 @@ function FilterList({ onDone }: { onDone?: () => void }) {
   const data = Route.useLoaderData();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+  const { t, copy } = useT();
   return (
     <div className="space-y-6 text-sm">
       <div>
-        <p className="text-xs tracking-[0.16em] text-ash uppercase">Category</p>
+        <p className="text-xs tracking-[0.16em] text-ash uppercase">{t("shop.category")}</p>
         <button className="mt-3 block" onClick={() => { void navigate({ search: { ...search, category: undefined } }); onDone?.(); }}>
-          All goods
+          {t("shop.allGoods")}
         </button>
         {data.categories.map((category) => (
           <button
@@ -122,7 +125,7 @@ function FilterList({ onDone }: { onDone?: () => void }) {
             className={search.category === category.slug ? "mt-2 block underline" : "mt-2 block text-ash"}
             onClick={() => { void navigate({ search: { ...search, category: category.slug } }); onDone?.(); }}
           >
-            {category.name}
+            {copy(category.name)}
           </button>
         ))}
       </div>
@@ -132,7 +135,7 @@ function FilterList({ onDone }: { onDone?: () => void }) {
           checked={search.stock === "1"}
           onChange={(event) => void navigate({ search: { ...search, stock: event.target.checked ? "1" : undefined } })}
         />
-        In stock only
+        {t("shop.inStock")}
       </label>
     </div>
   );

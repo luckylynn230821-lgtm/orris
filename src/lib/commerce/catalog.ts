@@ -79,4 +79,4 @@ export type CategoryCard = {
 };
 
 export const DEMO_CHECKOUT_COPY =
-  "Demonstration checkout. No card is charged. Price and stock are checked on the server, then the order, payment record and inventory move for real.";
+  "Demonstration checkout. No card is charged. Placing the order reserves stock and leaves it unpaid. Confirm payment from your customer page before the house can ship.";

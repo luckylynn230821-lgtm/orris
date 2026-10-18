@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { AdminError } from "@/components/admin/frame";
 import { adminBulk, adminImport, adminProducts } from "@/lib/commerce/fns";
 import { money } from "@/lib/format";
+import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/admin/products/")({
   component: ProductsPage,
@@ -11,6 +12,7 @@ export const Route = createFileRoute("/admin/products/")({
 });
 
 function ProductsPage() {
+  const { t } = useT();
   const [data, setData] = useState<Awaited<ReturnType<typeof adminProducts>> | null>(null);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
@@ -27,7 +29,7 @@ function ProductsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs tracking-[0.16em] text-ash uppercase">Catalogue</p>
-          <h1 className="text-4xl">Products</h1>
+          <h1 className="text-4xl">{t("admin.productsTitle")}</h1>
         </div>
         <Link to="/admin/products/$id" params={{ id: "new" }} className="inline-flex h-11 items-center bg-ink px-4 text-sm text-ivory">Add product</Link>
       </div>

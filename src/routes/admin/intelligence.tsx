@@ -3,6 +3,7 @@ import { useState } from "react";
 import { RangeBar, useAnalytics } from "@/components/admin/analytics-view";
 import { FLAG_LABEL } from "@/lib/commerce/metrics";
 import type { RangeKey } from "@/lib/commerce/metrics";
+import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/admin/intelligence")({
   component: IntelligencePage,
@@ -13,10 +14,11 @@ function IntelligencePage() {
   const [range, setRange] = useState<RangeKey>("30d");
   const [includeDemo, setIncludeDemo] = useState(true);
   const { data, error, loading } = useAnalytics(range, includeDemo);
+  const { t } = useT();
   const groups = ["replenishment", "slow_moving", "high_interest_low_conversion", "low_margin", "underperforming", "best_seller", "high_margin", "high_refund", "insufficient", "steady"];
   return (
     <div>
-      <h1 className="text-4xl">Product intelligence</h1>
+      <h1 className="text-4xl">{t("admin.intelligenceTitle")}</h1>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-ash">
         Rules, not a model. Each note cites the number that fired it. Nothing here changes a price, a purchase order or an ad budget.
       </p>

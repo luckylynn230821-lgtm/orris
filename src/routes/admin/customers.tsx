@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { adminCustomers } from "@/lib/commerce/fns";
 import { money } from "@/lib/format";
+import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/admin/customers")({
   component: CustomersPage,
@@ -9,13 +10,14 @@ export const Route = createFileRoute("/admin/customers")({
 });
 
 function CustomersPage() {
+  const { t } = useT();
   const [rows, setRows] = useState<Awaited<ReturnType<typeof adminCustomers>>>([]);
   useEffect(() => {
     void adminCustomers().then(setRows).catch(() => setRows([]));
   }, []);
   return (
     <div>
-      <h1 className="text-4xl">Customers</h1>
+      <h1 className="text-4xl">{t("admin.customersTitle")}</h1>
       <p className="mt-2 text-sm text-ash">Visible only on this desk. Sample buyers use example.com addresses.</p>
       <div className="mt-6 overflow-auto bg-paper">
         <table className="w-full min-w-[640px] text-left text-sm">

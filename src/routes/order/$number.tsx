@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { CustomerOrderCard, type CustomerOrder } from "@/components/store/customer-order";
 import { StoreShell } from "@/components/store/shell";
 import { lookupOrder } from "@/lib/commerce/fns";
-import { money } from "@/lib/format";
+import { useT } from "@/lib/i18n/provider";
 
 type Search = { token?: string; email?: string };
 
@@ -16,47 +17,51 @@ export const Route = createFileRoute("/order/$number")({
 });
 
 function OrderPage() {
+  const { t } = useT();
   const { number } = Route.useParams();
   const { token, email } = Route.useSearch();
-  const [order, setOrder] = useState<Awaited<ReturnType<typeof lookupOrder>> | undefined>(undefined);
+  const [order, setOrder] = useState<CustomerOrder | null | undefined>(undefined);
+  const [fresh, setFresh] = useState(false);
+  const load = () => lookupOrder({ data: { number, token, email } });
   useEffect(() => {
     let live = true;
-    void lookupOrder({ data: { number, token, email } }).then((result) => live && setOrder(result));
+    let previous = "";
+    const tick = () =>
+      load().then((result) => {
+        if (!live) return;
+        const next = JSON.stringify(result && [result.stageKey, result.stageDetail, result.tracking]);
+        if (previous && previous !== next) setFresh(true);
+        previous = next;
+        setOrder(result);
+      });
+    void tick();
+    const timer = setInterval(() => void tick(), 4000);
     return () => {
       live = false;
+      clearInterval(timer);
     };
   }, [number, token, email]);
 
   return (
     <StoreShell>
       <main className="mx-auto max-w-2xl px-4 py-14">
-        {order === undefined ? <p className="text-sm text-ash">Looking up the order…</p> : null}
+        {order === undefined ? <p className="text-sm text-ash">{t("order.loading")}</p> : null}
         {order === null ? (
           <div>
-            <h1 className="text-4xl">We can't show that order.</h1>
-            <p className="mt-3 text-sm text-ash">The link may be missing its private token. You can look it up with the order number and email.</p>
-            <Link to="/orders" className="mt-6 inline-block text-sm underline">Find an order</Link>
+            <h1 className="text-4xl">{t("order.missing")}</h1>
+            <p className="mt-3 text-sm text-ash">{t("order.missingBody")}</p>
+            <Link to="/login" search={{ next: "account" }} className="mt-6 inline-block text-sm underline">{t("order.signIn")}</Link>
           </div>
         ) : null}
         {order ? (
           <div>
-            <p className="text-xs tracking-[0.18em] text-ash uppercase">Order {order.number}</p>
-            <h1 className="mt-2 text-4xl">Thank you, {order.name.split(" ")[0]}.</h1>
-            <p className="mt-3 text-sm text-ash">Payment is recorded as a demonstration. No card was charged. Stock has been reduced.</p>
-            <dl className="mt-8 grid grid-cols-2 gap-4 text-sm">
-              <div><dt className="text-ash">Payment</dt><dd className="capitalize">{order.paymentStatus}</dd></div>
-              <div><dt className="text-ash">Fulfillment</dt><dd className="capitalize">{order.fulfillmentStatus}</dd></div>
-              <div><dt className="text-ash">Shipping</dt><dd className="capitalize">{order.shippingMethod}</dd></div>
-              <div><dt className="text-ash">Total</dt><dd className="tabular-nums">{money(order.totalCents)}</dd></div>
-            </dl>
-            <ul className="mt-8 divide-y divide-line border-y border-line text-sm">
-              {order.items.map((item) => (
-                <li key={item.sku + item.title} className="flex justify-between py-3">
-                  <span>{item.name} · {item.title} × {item.qty}</span>
-                  <span className="tabular-nums">{money(item.unitPriceCents * item.qty)}</span>
-                </li>
-              ))}
-            </ul>
+            <p className="mb-3 text-sm">{t("order.thanks", { name: order.name.split(" ")[0] ?? order.name })}</p>
+            {fresh ? <p className="mb-3 text-sm">{t("order.updated")}</p> : null}
+            <CustomerOrderCard order={order} token={token} onChange={() => void load().then(setOrder)} />
+            <p className="mt-6 text-sm text-ash">
+              {t("order.all")}{" "}
+              <Link to="/login" search={{ next: "account" }} className="underline">{t("order.signIn")}</Link>
+            </p>
           </div>
         ) : null}
       </main>

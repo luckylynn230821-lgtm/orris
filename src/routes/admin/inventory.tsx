@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { AdminError } from "@/components/admin/frame";
 import { adminAdjustStock, adminInventory } from "@/lib/commerce/fns";
 import { money } from "@/lib/format";
+import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/admin/inventory")({
   component: InventoryPage,
@@ -11,6 +12,7 @@ export const Route = createFileRoute("/admin/inventory")({
 });
 
 function InventoryPage() {
+  const { t } = useT();
   const [data, setData] = useState<Awaited<ReturnType<typeof adminInventory>> | null>(null);
   const [error, setError] = useState("");
   const load = () => {
@@ -19,7 +21,7 @@ function InventoryPage() {
   useEffect(load, []);
   return (
     <div>
-      <h1 className="text-4xl">Inventory</h1>
+      <h1 className="text-4xl">{t("admin.inventoryTitle")}</h1>
       <p className="mt-2 max-w-2xl text-sm text-ash">
         On-hand units and the cost value of that stock. Sample orders do not replay through this ledger. The opening balance is today's count. Sales, refunds and edits append after that.
       </p>

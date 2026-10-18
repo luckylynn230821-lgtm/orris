@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { RangeBar, useAnalytics } from "@/components/admin/analytics-view";
 import { money, pct } from "@/lib/format";
+import { useT } from "@/lib/i18n/provider";
 import type { RangeKey } from "@/lib/commerce/metrics";
 
 export const Route = createFileRoute("/admin/analytics")({
@@ -15,6 +16,7 @@ function AnalyticsPage() {
   const [includeDemo, setIncludeDemo] = useState(true);
   const [sort, setSort] = useState<"net" | "units" | "profit" | "margin">("net");
   const { data, error, loading } = useAnalytics(range, includeDemo);
+  const { t } = useT();
   const rows = useMemo(() => {
     const list = [...(data?.products ?? [])];
     list.sort((a, b) => {
@@ -27,7 +29,7 @@ function AnalyticsPage() {
   }, [data, sort]);
   return (
     <div>
-      <h1 className="text-4xl">Analytics</h1>
+      <h1 className="text-4xl">{t("admin.analyticsTitle")}</h1>
       <div className="mt-6"><RangeBar range={range} setRange={setRange} includeDemo={includeDemo} setIncludeDemo={setIncludeDemo} /></div>
       {loading ? <p className="mt-6 text-sm text-ash">Loading…</p> : null}
       {error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}

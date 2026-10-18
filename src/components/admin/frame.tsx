@@ -12,26 +12,30 @@ import {
   Users,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { LanguageSwitch } from "@/components/language-switch";
 import { signIn } from "@/lib/auth/client";
 import { GROK_PROVIDERS } from "@/lib/auth/providers";
 import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/provider";
+import type { MessageKey } from "@/lib/i18n/translate";
 
 const NAV = [
-  { to: "/admin", label: "Overview", icon: LayoutDashboard },
-  { to: "/admin/products", label: "Products", icon: Package },
-  { to: "/admin/inventory", label: "Inventory", icon: Boxes },
-  { to: "/admin/orders", label: "Orders", icon: ShoppingBag },
-  { to: "/admin/customers", label: "Customers", icon: Users },
-  { to: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/admin/intelligence", label: "Intelligence", icon: Lightbulb },
-  { to: "/admin/reports", label: "Reports", icon: FileSpreadsheet },
-  { to: "/admin/content", label: "Content", icon: Sparkles },
-  { to: "/admin/settings", label: "Settings", icon: Settings },
+  { to: "/admin", label: "admin.overview", icon: LayoutDashboard },
+  { to: "/admin/products", label: "admin.products", icon: Package },
+  { to: "/admin/inventory", label: "admin.inventory", icon: Boxes },
+  { to: "/admin/orders", label: "admin.orders", icon: ShoppingBag },
+  { to: "/admin/customers", label: "admin.customers", icon: Users },
+  { to: "/admin/analytics", label: "admin.analytics", icon: BarChart3 },
+  { to: "/admin/intelligence", label: "admin.intelligence", icon: Lightbulb },
+  { to: "/admin/reports", label: "admin.reports", icon: FileSpreadsheet },
+  { to: "/admin/content", label: "admin.content", icon: Sparkles },
+  { to: "/admin/settings", label: "admin.settings", icon: Settings },
 ] as const;
 
 export function AdminFrame({ children }: { children: ReactNode }) {
+  const { t } = useT();
   const { user, isPending } = useCurrentUserState();
   const path = useRouterState({ select: (state) => state.location.pathname });
   if (isPending) {
@@ -46,12 +50,10 @@ export function AdminFrame({ children }: { children: ReactNode }) {
     return (
       <main className="grid min-h-screen place-items-center bg-ivory px-6">
         <div className="w-full max-w-md">
-          <p className="text-xs tracking-[0.2em] text-ash uppercase">Merchant desk</p>
-          <h1 className="mt-3 text-4xl">Sign in to keep the books.</h1>
-          <p className="mt-3 text-sm leading-6 text-ash">
-            The shop is open to guests. Cost, profit and customer records open only after you sign in. The first account becomes the administrator.
-          </p>
-          <a href="/login" className="mt-6 inline-flex h-11 items-center bg-ink px-5 text-sm text-ivory">Sign in with email</a>
+          <p className="text-xs tracking-[0.2em] text-ash uppercase">{t("admin.gateKicker")}</p>
+          <h1 className="mt-3 text-4xl">{t("admin.gateTitle")}</h1>
+          <p className="mt-3 text-sm leading-6 text-ash">{t("admin.gateBody")}</p>
+          <a href="/login?next=admin" className="mt-6 inline-flex h-11 items-center bg-ink px-5 text-sm text-ivory">{t("admin.gateEmail")}</a>
           <div className="mt-4 space-y-2">
             {GROK_PROVIDERS.map((provider) => (
               <button
@@ -59,7 +61,7 @@ export function AdminFrame({ children }: { children: ReactNode }) {
                 className="h-11 w-full border border-line text-sm"
                 onClick={() => void signIn(provider.providerId, { callbackURL: "/admin" })}
               >
-                Continue with {provider.label}
+                {t("admin.gateWith", { provider: provider.label })}
               </button>
             ))}
           </div>
@@ -72,7 +74,10 @@ export function AdminFrame({ children }: { children: ReactNode }) {
       <aside className="bg-ink text-ivory md:min-h-screen">
         <div className="flex items-center justify-between px-4 py-5">
           <Link to="/" className="font-display text-xl tracking-[0.16em]">ORRIS</Link>
-          <UserButton />
+          <div className="flex items-center gap-2">
+            <LanguageSwitch tone="ink" />
+            <UserButton />
+          </div>
         </div>
         <nav className="flex gap-1 overflow-auto px-2 pb-3 md:block md:space-y-1">
           {NAV.map((item) => {
@@ -88,7 +93,7 @@ export function AdminFrame({ children }: { children: ReactNode }) {
                 )}
               >
                 <Icon className="size-4" />
-                {item.label}
+                {t(item.label as MessageKey)}
               </Link>
             );
           })}

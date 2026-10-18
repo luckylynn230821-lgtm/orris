@@ -3,9 +3,10 @@ import { useEffect, useState } from "react";
 import { StoreShell } from "@/components/store/shell";
 import { Button, Field } from "@/components/ui";
 import { ensureSessionKey, useCart } from "@/lib/cart";
-import { DEMO_CHECKOUT_COPY } from "@/lib/commerce/catalog";
 import { checkout, quoteCart, trackEvent } from "@/lib/commerce/fns";
 import { money } from "@/lib/format";
+import { localize } from "@/lib/i18n/text";
+import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
@@ -16,6 +17,7 @@ function CheckoutPage() {
   const lines = useCart((state) => state.lines);
   const clear = useCart((state) => state.clear);
   const navigate = useNavigate();
+  const { t, tx, copy } = useT();
   const [quote, setQuote] = useState<Awaited<ReturnType<typeof quoteCart>> | null>(null);
   const [method, setMethod] = useState<"standard" | "express">("standard");
   const [error, setError] = useState("");
@@ -73,52 +75,52 @@ function CheckoutPage() {
                 clear();
                 void navigate({ to: "/order/$number", params: { number: result.number }, search: { token: result.token } });
               })
-              .catch((err: unknown) => setError(err instanceof Error ? err.message : "Checkout failed"))
+              .catch((err: unknown) => setError(err instanceof Error ? localize(err.message, tx) : t("checkout.failed")))
               .finally(() => setPending(false));
           }}
         >
-          <h1 className="text-4xl">Checkout</h1>
-          <p className="text-sm leading-6 text-ash">{DEMO_CHECKOUT_COPY}</p>
-          <Field label="Email" name="email" type="email" required autoComplete="email" />
-          <Field label="Full name" name="name" required autoComplete="name" />
-          <Field label="Address" name="line1" required autoComplete="address-line1" />
+          <h1 className="text-4xl">{t("checkout.title")}</h1>
+          <p className="text-sm leading-6 text-ash">{t("checkout.demo")}</p>
+          <Field label={t("checkout.email")} name="email" type="email" required autoComplete="email" />
+          <Field label={t("checkout.name")} name="name" required autoComplete="name" />
+          <Field label={t("checkout.address")} name="line1" required autoComplete="address-line1" />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="City" name="city" required />
-            <Field label="Region" name="region" required />
-            <Field label="Postal code" name="postal" required />
-            <Field label="Country" name="country" required defaultValue="United States" />
+            <Field label={t("checkout.city")} name="city" required />
+            <Field label={t("checkout.region")} name="region" required />
+            <Field label={t("checkout.postal")} name="postal" required />
+            <Field label={t("checkout.country")} name="country" required defaultValue="United States" />
           </div>
           <fieldset className="space-y-2 pt-2">
-            <legend className="text-xs tracking-[0.14em] text-ash uppercase">Shipping</legend>
+            <legend className="text-xs tracking-[0.14em] text-ash uppercase">{t("checkout.shipping")}</legend>
             <label className="flex items-center justify-between border border-line p-3 text-sm">
-              <span><input type="radio" name="ship" checked={method === "standard"} onChange={() => setMethod("standard")} /> Standard</span>
-              <span className="tabular-nums">{shipping === 0 && method === "standard" ? "Free" : money(quote?.standardCents ?? 0)}</span>
+              <span><input type="radio" name="ship" checked={method === "standard"} onChange={() => setMethod("standard")} /> {t("checkout.standard")}</span>
+              <span className="tabular-nums">{shipping === 0 && method === "standard" ? t("checkout.free") : money(quote?.standardCents ?? 0)}</span>
             </label>
             <label className="flex items-center justify-between border border-line p-3 text-sm">
-              <span><input type="radio" name="ship" checked={method === "express"} onChange={() => setMethod("express")} /> Express</span>
+              <span><input type="radio" name="ship" checked={method === "express"} onChange={() => setMethod("express")} /> {t("checkout.express")}</span>
               <span className="tabular-nums">{money(quote?.expressCents ?? 0)}</span>
             </label>
           </fieldset>
           {error ? <p className="text-sm text-danger">{error}</p> : null}
-          <Button type="submit" disabled={pending || !quote?.lines.length}>{pending ? "Placing order…" : "Place demonstration order"}</Button>
+          <Button type="submit" disabled={pending || !quote?.lines.length}>{pending ? t("checkout.placing") : t("checkout.place")}</Button>
         </form>
         <aside className="h-fit border border-line bg-paper p-5">
-          <h2 className="text-2xl">Summary</h2>
+          <h2 className="text-2xl">{t("checkout.summary")}</h2>
           <ul className="mt-4 space-y-3 text-sm">
             {quote?.lines.map((line) => (
               <li key={line.variantId} className="flex justify-between gap-3">
-                <span>{line.name} × {line.qty}</span>
+                <span>{copy(line.name)} × {line.qty}</span>
                 <span className="tabular-nums">{money(line.priceCents * line.qty)}</span>
               </li>
             ))}
           </ul>
           <dl className="mt-4 space-y-2 border-t border-line pt-4 text-sm">
-            <div className="flex justify-between"><dt>Subtotal</dt><dd className="tabular-nums">{money(quote?.subtotalCents ?? 0)}</dd></div>
-            <div className="flex justify-between"><dt>Shipping</dt><dd className="tabular-nums">{money(shipping)}</dd></div>
-            <div className="flex justify-between"><dt>Tax</dt><dd className="tabular-nums">{money(0)}</dd></div>
-            <div className="flex justify-between text-base"><dt>Total</dt><dd className="tabular-nums">{money(total)}</dd></div>
+            <div className="flex justify-between"><dt>{t("checkout.subtotal")}</dt><dd className="tabular-nums">{money(quote?.subtotalCents ?? 0)}</dd></div>
+            <div className="flex justify-between"><dt>{t("checkout.shipping")}</dt><dd className="tabular-nums">{money(shipping)}</dd></div>
+            <div className="flex justify-between"><dt>{t("checkout.tax")}</dt><dd className="tabular-nums">{money(0)}</dd></div>
+            <div className="flex justify-between text-base"><dt>{t("checkout.total")}</dt><dd className="tabular-nums">{money(total)}</dd></div>
           </dl>
-          <p className="mt-4 text-xs leading-5 text-ash">Tax is recorded separately and is currently zero. No card is sent to a processor.</p>
+          <p className="mt-4 text-xs leading-5 text-ash">{t("checkout.taxNote")}</p>
         </aside>
       </main>
     </StoreShell>

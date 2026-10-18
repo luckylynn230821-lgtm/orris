@@ -31,7 +31,7 @@ function allow(email: string) {
 export async function placeOrder(input: CheckoutInput, userId: string | null) {
   await ensureSeeded();
   const email = input.email.trim().toLowerCase();
-  if (!allow(email)) throw userError("Too many checkout attempts. Wait a few minutes and try again.");
+  if (!allow(email)) throw userError("err.rate");
 
   return withTx(async (query) => {
     const existing = await query<{ number: string; access_token: string }>(
@@ -46,7 +46,7 @@ export async function placeOrder(input: CheckoutInput, userId: string | null) {
       "select shipping_flat_cents, express_shipping_cents, free_shipping_threshold_cents, currency from store_settings where id = 1",
     );
     const settings = settingsRows[0];
-    if (!settings) throw userError("Shop settings are missing.");
+    if (!settings) throw userError("err.settings");
 
     const ids = JSON.stringify([...new Set(input.lines.map((line) => line.variantId))]);
     const variants = await query<{
@@ -87,10 +87,10 @@ export async function placeOrder(input: CheckoutInput, userId: string | null) {
 
     for (const [variantId, qty] of wanted) {
       const row = byId.get(variantId);
-      if (!row || row.status !== "published") throw userError("A piece in your bag is no longer for sale.");
-      if (qty > 10) throw userError("You can order up to 10 of each piece at a time.");
+      if (!row || row.status !== "published") throw userError("err.notForSale");
+      if (qty > 10) throw userError("err.qtyCap");
       if (num(row.inventory_qty) < qty) {
-        throw userError(`Only ${num(row.inventory_qty)} left of ${row.product_name} (${row.title}).`);
+        throw userError(`err.onlyLeft\n${JSON.stringify({ count: num(row.inventory_qty), name: row.product_name, title: row.title })}`);
       }
       priced.push({
         variantId,
@@ -152,7 +152,7 @@ export async function placeOrder(input: CheckoutInput, userId: string | null) {
         shipping_cents, tax_cents, total_cents, refunded_cents, currency, shipping_method,
         shipping_address, is_demo
       ) values (
-        $1,$2,$3,$4,$5,$6,$7,'paid','paid','unfulfilled',$8,$9,$10,$11,$12,0,$13,$14,$15::jsonb,false
+        $1,$2,$3,$4,$5,$6,$7,'pending','unpaid','unfulfilled',$8,$9,$10,$11,$12,0,$13,$14,$15::jsonb,false
       )`,
       [
         orderId,
@@ -198,11 +198,11 @@ export async function placeOrder(input: CheckoutInput, userId: string | null) {
          returning inventory_qty`,
         [line.qty, line.variantId],
       );
-      if (!updated[0]) throw userError(`Only a few left of ${line.name}. Please lower the quantity.`);
+      if (!updated[0]) throw userError(`err.lowerQty\n${JSON.stringify({ name: line.name })}`);
       await query(
         `insert into inventory_movements (id, variant_id, qty_delta, reason, reference, note)
          values ($1, $2, $3, 'sale', $4, $5)`,
-        [crypto.randomUUID(), line.variantId, -line.qty, number, "Demonstration checkout"],
+        [crypto.randomUUID(), line.variantId, -line.qty, number, "Reserved for an unpaid order"],
       );
       await query(
         `insert into product_events (product_id, event, session_key, qty, occurred_on, is_demo)
@@ -213,9 +213,8 @@ export async function placeOrder(input: CheckoutInput, userId: string | null) {
     }
 
     await query(
-      `insert into payments (id, order_id, provider, status, amount_cents, provider_ref, idempotency_key)
-       values ($1, $2, 'demonstration', 'paid', $3, $4, $5)`,
-      [crypto.randomUUID(), orderId, total, `demo_${orderId}`, input.idempotencyKey],
+      `insert into order_events (id, order_id, message) values ($1, $2, $3)`,
+      [crypto.randomUUID(), orderId, "event.placed"],
     );
 
     return { number, token, replayed: false, totalCents: total };

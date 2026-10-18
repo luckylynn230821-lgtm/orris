@@ -3,6 +3,7 @@ import { useState } from "react";
 import { RangeBar, useAnalytics } from "@/components/admin/analytics-view";
 import { money, pct } from "@/lib/format";
 import { toCsv, type RangeKey } from "@/lib/commerce/metrics";
+import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/admin/reports")({
   component: ReportsPage,
@@ -13,6 +14,7 @@ function ReportsPage() {
   const [range, setRange] = useState<RangeKey>("30d");
   const [includeDemo, setIncludeDemo] = useState(true);
   const { data, error, loading } = useAnalytics(range, includeDemo);
+  const { t } = useT();
   const download = (name: string, csv: string) => {
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -24,7 +26,7 @@ function ReportsPage() {
   };
   return (
     <div>
-      <h1 className="text-4xl">Reports</h1>
+      <h1 className="text-4xl">{t("admin.reportsTitle")}</h1>
       <p className="mt-2 max-w-2xl text-sm text-ash">These files use the same figures as the analytics page. Export is available only after you are signed in as the administrator.</p>
       <div className="mt-6"><RangeBar range={range} setRange={setRange} includeDemo={includeDemo} setIncludeDemo={setIncludeDemo} /></div>
       {loading ? <p className="mt-6 text-sm text-ash">Preparing…</p> : null}

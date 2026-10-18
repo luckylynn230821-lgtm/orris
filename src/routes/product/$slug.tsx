@@ -6,6 +6,7 @@ import { Button, Photo } from "@/components/ui";
 import { ensureSessionKey, useCart } from "@/lib/cart";
 import { getProduct, trackEvent } from "@/lib/commerce/fns";
 import { money } from "@/lib/format";
+import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/product/$slug")({
   loader: async ({ params }) => {
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/product/$slug")({
 
 function ProductPage() {
   const { product, related, settings } = Route.useLoaderData();
+  const { t, copy } = useT();
   const [variantId, setVariantId] = useState(product.variants[0]?.id ?? "");
   const [qty, setQty] = useState(1);
   const [open, setOpen] = useState<string | null>("material");
@@ -50,19 +52,19 @@ function ProductPage() {
           {product.images[0] ? <Photo src={product.images[0].url} alt={product.images[0].alt} /> : null}
         </div>
         <div>
-          <p className="text-xs tracking-[0.18em] text-ash uppercase">{product.categoryName}</p>
-          <h1 className="mt-2 text-4xl md:text-5xl">{product.name}</h1>
+          <p className="text-xs tracking-[0.18em] text-ash uppercase">{copy(product.categoryName)}</p>
+          <h1 className="mt-2 text-4xl md:text-5xl">{copy(product.name)}</h1>
           <p className="mt-4 text-lg tabular-nums">
             {money(variant.priceCents)}
             {variant.compareAtCents && variant.compareAtCents > variant.priceCents ? (
               <span className="ml-3 text-sm text-ash line-through">{money(variant.compareAtCents)}</span>
             ) : null}
           </p>
-          <p className="mt-2 text-sm text-ash">{variant.inventoryQty > 0 ? (variant.inventoryQty <= 5 ? `Only ${variant.inventoryQty} left` : "In stock") : "Sold out"}</p>
-          <p className="mt-6 leading-7 text-ink/80">{product.description}</p>
+          <p className="mt-2 text-sm text-ash">{variant.inventoryQty > 0 ? (variant.inventoryQty <= 5 ? t("product.onlyLeft", { count: variant.inventoryQty }) : t("product.inStock")) : t("product.soldOut")}</p>
+          <p className="mt-6 leading-7 text-ink/80">{copy(product.description)}</p>
           {groups.map((group) => (
             <div key={group.name} className="mt-6">
-              <p className="text-xs tracking-[0.16em] text-ash uppercase">{group.name}</p>
+              <p className="text-xs tracking-[0.16em] text-ash uppercase">{copy(group.name)}</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {group.values.map((value) => {
                   const match = product.variants.find((item) => matches(item, group.name, value, variant));
@@ -74,7 +76,7 @@ function ProductPage() {
                       onClick={() => match && setVariantId(match.id)}
                       className={active ? "h-11 border border-ink px-4 text-sm" : "h-11 border border-line px-4 text-sm"}
                     >
-                      {value}
+                      {copy(value)}
                     </button>
                   );
                 })}
@@ -82,9 +84,9 @@ function ProductPage() {
             </div>
           ))}
           <div className="mt-6 flex items-center gap-3">
-            <button className="grid size-11 place-items-center border border-line" onClick={() => setQty((n) => Math.max(1, n - 1))} aria-label="Decrease">–</button>
+            <button className="grid size-11 place-items-center border border-line" onClick={() => setQty((n) => Math.max(1, n - 1))} aria-label={t("bag.decrease")}>–</button>
             <span className="w-6 text-center tabular-nums">{qty}</span>
-            <button className="grid size-11 place-items-center border border-line" onClick={() => setQty((n) => Math.min(10, n + 1))} aria-label="Increase">+</button>
+            <button className="grid size-11 place-items-center border border-line" onClick={() => setQty((n) => Math.min(10, n + 1))} aria-label={t("bag.increase")}>+</button>
           </div>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Button
@@ -94,10 +96,10 @@ function ProductPage() {
                 add(variant.id, qty);
                 const sessionKey = ensureSessionKey();
                 void trackEvent({ data: { productId: product.id, event: "add_to_cart", sessionKey } });
-                toast("Added to your bag");
+                toast(t("product.added"));
               }}
             >
-              Add to bag
+              {t("product.add")}
             </Button>
             <Button
               variant="ghost"
@@ -108,29 +110,33 @@ function ProductPage() {
                 void navigate({ to: "/checkout" });
               }}
             >
-              Buy now
+              {t("product.buy")}
             </Button>
           </div>
-          <p className="mt-4 text-xs text-ash">SKU {variant.sku}</p>
+          <p className="mt-4 text-xs text-ash">{t("product.sku", { sku: variant.sku })}</p>
           <div className="mt-8 divide-y divide-line border-y border-line">
-            <Fold title="Material & care" id="material" open={open} setOpen={setOpen}>{product.story}</Fold>
-            <Fold title="Shipping" id="ship" open={open} setOpen={setOpen}>
-              Standard shipping is {money(settings.shippingFlatCents)}, and complimentary over {money(settings.freeShippingThresholdCents)}. Express is {money(settings.expressShippingCents)}. In-stock orders leave within two business days.
+            <Fold title={t("product.material")} id="material" open={open} setOpen={setOpen}>{copy(product.story)}</Fold>
+            <Fold title={t("product.shipping")} id="ship" open={open} setOpen={setOpen}>
+              {t("product.shippingBody", {
+                standard: money(settings.shippingFlatCents),
+                threshold: money(settings.freeShippingThresholdCents),
+                express: money(settings.expressShippingCents),
+              })}
             </Fold>
-            <Fold title="Returns" id="returns" open={open} setOpen={setOpen}>
-              Write to {settings.supportEmail} within 14 days if a piece is not right. Worn or washed goods are repaired rather than refunded, unless they arrived damaged.
+            <Fold title={t("product.returns")} id="returns" open={open} setOpen={setOpen}>
+              {t("product.returnsBody", { email: settings.supportEmail })}
             </Fold>
           </div>
         </div>
       </main>
       {related.length > 0 ? (
         <section className="mx-auto max-w-6xl px-4 pb-16 md:px-6">
-          <h2 className="mb-6 text-3xl">Alongside it</h2>
+          <h2 className="mb-6 text-3xl">{t("product.alongside")}</h2>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
             {related.map((item) => (
               <Link key={item.id} to="/product/$slug" params={{ slug: item.slug }}>
                 <div className="aspect-[3/4] bg-stone">{item.images[0] ? <Photo src={item.images[0].url} alt={item.images[0].alt} /> : null}</div>
-                <p className="mt-3 text-sm">{item.name}</p>
+                <p className="mt-3 text-sm">{copy(item.name)}</p>
                 <p className="text-sm tabular-nums">{money(item.priceCents)}</p>
               </Link>
             ))}
