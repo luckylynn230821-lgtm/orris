@@ -5,6 +5,7 @@ import { LanguageSwitch } from "@/components/language-switch";
 import { Mark } from "@/components/store/mark";
 import { quoteCart, getChrome } from "@/lib/commerce/fns";
 import { ensureSessionKey, useCart } from "@/lib/cart";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { localize } from "@/lib/i18n/text";
 import { useT } from "@/lib/i18n/provider";
 import { money } from "@/lib/format";
@@ -25,6 +26,7 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
   const [chrome, setChrome] = useState<{ announcement: string; brandName: string; footerBlurb: string; supportEmail: string } | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
   const navigate = useNavigate();
+  const { user } = useCurrentUserState();
   const count = lines.reduce((sum, line) => sum + line.qty, 0);
   const lineKey = lines.map((line) => `${line.variantId}:${line.qty}`).join("|");
 
@@ -69,7 +71,11 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
             <button className="grid size-11 place-items-center" aria-label={t("nav.search")} onClick={() => setSearch(true)}>
               <Search className="size-5" />
             </button>
-            <Link to="/account" className="hidden px-2 text-sm md:inline">{t("nav.account")}</Link>
+            {user ? (
+              <Link to="/account" className="hidden px-2 text-sm md:inline">{t("nav.account")}</Link>
+            ) : (
+              <Link to="/login" search={{ next: "account" }} className="hidden px-2 text-sm md:inline">{t("nav.account")}</Link>
+            )}
             <button className="relative grid size-11 place-items-center" aria-label={t("nav.bag")} onClick={() => setOpen(true)}>
               <ShoppingBag className="size-5" />
               {count > 0 ? (
@@ -118,7 +124,11 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
             <Link to="/shop" search={{ pet: "cat" }} onClick={() => setMenu(false)}>{t("nav.cats")}</Link>
             <Link to="/collections" onClick={() => setMenu(false)}>{t("nav.collections")}</Link>
             <Link to="/about" onClick={() => setMenu(false)}>{t("nav.house")}</Link>
-            <Link to="/account" onClick={() => setMenu(false)}>{t("nav.account")}</Link>
+            {user ? (
+              <Link to="/account" onClick={() => setMenu(false)}>{t("nav.account")}</Link>
+            ) : (
+              <Link to="/login" search={{ next: "account" }} onClick={() => setMenu(false)}>{t("nav.account")}</Link>
+            )}
             <Link to="/orders" onClick={() => setMenu(false)}>{t("nav.orders")}</Link>
           </div>
         </div>

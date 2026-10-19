@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CustomerOrderCard, type CustomerOrder } from "@/components/store/customer-order";
 import { StoreShell } from "@/components/store/shell";
@@ -17,6 +17,7 @@ export const Route = createFileRoute("/account")({
 
 function AccountPage() {
   const { t } = useT();
+  const navigate = useNavigate();
   const { user, isPending } = useCurrentUserState();
   const [tab, setTab] = useState<(typeof TABS)[number]>("all");
   const [orders, setOrders] = useState<CustomerOrder[] | null>(null);
@@ -42,6 +43,13 @@ function AccountPage() {
       clearInterval(timer);
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!isPending && !user) {
+      void navigate({ to: "/login", search: { next: "account" }, replace: true });
+    }
+  }, [isPending, user, navigate]);
+
   const visible = (orders ?? []).filter((order) => tab === "all" || order.stageKey === tab);
 
   return (
@@ -50,13 +58,13 @@ function AccountPage() {
         <p className="text-xs tracking-[0.18em] text-ash uppercase">{t("account.kicker")}</p>
         <h1 className="mt-2 text-5xl">{t("account.title")}</h1>
         <p className="mt-3 max-w-lg text-sm leading-6 text-ash">{t("account.body")}</p>
-        {isPending ? <p className="mt-6 text-sm text-ash">{t("account.checking")}</p> : null}
-        {!isPending && !user ? (
-          <p className="mt-8 text-sm leading-7">
-            {t("account.signedOut")}
-            <Link to="/login" search={{ next: "account" }} className="mx-1 underline">{t("account.signIn")}</Link>.
+        {isPending && !user ? (
+          <p className="mt-6 text-sm text-ash">
+            {t("account.checking")}{" "}
+            <Link to="/login" search={{ next: "account" }} className="underline">{t("account.signIn")}</Link>
           </p>
         ) : null}
+        {!isPending && !user ? <p className="mt-8 text-sm text-ash">{t("account.checking")}</p> : null}
         {user ? (
           <div className="mt-6">
             <div className="flex items-center justify-between gap-3 text-sm">
