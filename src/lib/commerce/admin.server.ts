@@ -370,6 +370,32 @@ export async function adjustStock(userId: string, input: { variantId: string; de
   return { ok: true };
 }
 
+/** Read-only shelf for a manager: units left and retail value. No cost. */
+export async function managerFloor(userId: string) {
+  await requireDesk(userId, { catalog: ["read"] });
+  const settings = await readSettings();
+  const products = await loadAllProducts();
+  const rows = products.flatMap((product) =>
+    product.variants.map((variant) => ({
+      id: variant.id,
+      name: `${product.name} · ${variant.title}`,
+      sku: variant.sku,
+      qty: variant.inventoryQty,
+      priceCents: variant.priceCents,
+      retailCents: variant.inventoryQty * variant.priceCents,
+      low: variant.inventoryQty > 0 && variant.inventoryQty <= settings.lowStock,
+      out: variant.inventoryQty === 0,
+    })),
+  );
+  return {
+    units: rows.reduce((sum, row) => sum + row.qty, 0),
+    retailCents: rows.reduce((sum, row) => sum + row.retailCents, 0),
+    low: rows.filter((row) => row.low).length,
+    out: rows.filter((row) => row.out).length,
+    rows,
+  };
+}
+
 export async function listInventory(userId: string) {
   const session = await requireDesk(userId, { inventory: ["read"] });
   const seeCost = can(session.role, { money: ["read"] });

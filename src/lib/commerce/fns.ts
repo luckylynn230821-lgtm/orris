@@ -338,6 +338,13 @@ export const adminUpdateImage = createServerFn({ method: "POST" })
     return guard(() => updateImage(context.userId, data));
   });
 
+export const adminFloor = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const { managerFloor } = await import("./admin.server");
+    return guard(() => managerFloor(context.userId));
+  });
+
 export const adminInventory = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {

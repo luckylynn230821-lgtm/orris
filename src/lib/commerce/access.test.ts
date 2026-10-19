@@ -12,7 +12,7 @@ test("only the owner can see cost and profit", () => {
   assert.equal(can("owner", { money: ["read"] }), true);
   assert.equal(can("manager", { money: ["read"] }), false);
   assert.equal(can("manager", { customer: ["read"] }), true);
-  assert.equal(can("manager", { settings: ["update"] }), true);
+  assert.equal(can("manager", { settings: ["update"] }), false);
   assert.equal(can("manager", { catalog: ["update"] }), true);
   assert.equal(can("staff", { money: ["read"] }), false);
   assert.equal(can("staff", { customer: ["read"] }), false);
