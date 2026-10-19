@@ -76,6 +76,7 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
             ) : (
               <Link to="/login" search={{ next: "account" }} className="hidden px-2 text-sm md:inline">{t("nav.account")}</Link>
             )}
+            <Link to="/admin" className="hidden px-2 text-sm md:inline">{t("nav.merchant")}</Link>
             <button className="relative grid size-11 place-items-center" aria-label={t("nav.bag")} onClick={() => setOpen(true)}>
               <ShoppingBag className="size-5" />
               {count > 0 ? (
@@ -130,6 +131,7 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
               <Link to="/login" search={{ next: "account" }} onClick={() => setMenu(false)}>{t("nav.account")}</Link>
             )}
             <Link to="/orders" onClick={() => setMenu(false)}>{t("nav.orders")}</Link>
+            <Link to="/admin" onClick={() => setMenu(false)}>{t("nav.merchant")}</Link>
           </div>
         </div>
       ) : null}
