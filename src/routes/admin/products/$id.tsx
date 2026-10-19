@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AdminError, useDeskAccess } from "@/components/admin/frame";
 import { Button, Field } from "@/components/ui";
@@ -49,7 +49,39 @@ function Editor() {
   const [seoDescription, setSeoDescription] = useState("");
   const [variants, setVariants] = useState<VariantDraft[]>([blankVariant()]);
   const [images, setImages] = useState<{ id: string; url: string; alt: string; isCover: boolean }[]>([]);
+  const [pending, setPending] = useState<{ key: string; dataUrl: string }[]>([]);
   const [saving, setSaving] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const takeFiles = (list: FileList | File[]) => {
+    for (const file of Array.from(list)) {
+      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 900 * 1024) {
+        toast(t("desk.imageRejected"));
+        continue;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = String(reader.result || "");
+        if (dataUrl.length > 1_200_000) {
+          toast(t("desk.imageRejected"));
+          return;
+        }
+        if (id === "new") {
+          setPending((current) => [...current, { key: crypto.randomUUID(), dataUrl }]);
+          return;
+        }
+        void adminSaveImage({ data: { productId: id, dataUrl, alt: name || file.name } })
+          .then((saved) =>
+            setImages((current) => [
+              ...current,
+              { id: saved.id, url: dataUrl, alt: name || file.name, isCover: current.length === 0 },
+            ]),
+          )
+          .catch((err: unknown) => toast(err instanceof Error ? localize(err.message, tx) : t("admin.failed")));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   useEffect(() => {
     void adminProducts().then((catalog) => {
@@ -125,7 +157,16 @@ function Editor() {
             })),
           },
         })
-          .then((result) => {
+          .then(async (result) => {
+            if (id === "new") {
+              for (const image of pending) {
+                try {
+                  await adminSaveImage({ data: { productId: result.id, dataUrl: image.dataUrl, alt: name } });
+                } catch (err: unknown) {
+                  toast(err instanceof Error ? localize(err.message, tx) : t("desk.imageRejected"));
+                }
+              }
+            }
             toast(t("desk.saved"));
             if (id === "new") void navigate({ to: "/admin/products/$id", params: { id: result.id } });
           })
@@ -135,6 +176,97 @@ function Editor() {
     >
       <h1 className="text-4xl">{id === "new" ? t("admin.newProduct") : t("admin.editProduct")}</h1>
       {error ? <AdminError message={error} /> : null}
+      <section
+        className="border border-dashed border-line bg-paper p-4"
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          event.preventDefault();
+          if (event.dataTransfer.files.length) takeFiles(event.dataTransfer.files);
+        }}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-2xl">{t("desk.images")}</h2>
+          <button
+            type="button"
+            className="h-11 shrink-0 bg-ink px-4 text-sm text-ivory"
+            onClick={() => fileRef.current?.click()}
+          >
+            {t("desk.addImage")}
+          </button>
+        </div>
+        <p className="mt-2 text-xs leading-5 text-ash">{t("desk.uploadHint")} {t("desk.dropImages")}</p>
+        {id === "new" ? <p className="mt-1 text-xs text-ash">{t("desk.saveFirst")}</p> : null}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          className="sr-only"
+          onChange={(event) => {
+            if (event.target.files?.length) takeFiles(event.target.files);
+            event.target.value = "";
+          }}
+        />
+        {images.length + pending.length === 0 ? null : (
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {images.map((image) => (
+              <figure key={image.id} className="bg-ivory p-2">
+                <img src={image.url} alt={image.alt} className="aspect-[3/4] w-full object-cover" />
+                <div className="mt-2 flex gap-3 text-xs">
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => {
+                      void adminUpdateImage({ data: { id: image.id, cover: true } })
+                        .then(() => {
+                          setImages((current) => current.map((item) => ({ ...item, isCover: item.id === image.id })));
+                          toast(t("desk.coverSet"));
+                        })
+                        .catch((err: unknown) => toast(err instanceof Error ? localize(err.message, tx) : t("admin.failed")));
+                    }}
+                  >
+                    {image.isCover ? t("desk.coverSet") : t("desk.cover")}
+                  </button>
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => {
+                      void adminUpdateImage({ data: { id: image.id, delete: true } })
+                        .then(() => setImages((current) => current.filter((item) => item.id !== image.id)))
+                        .catch((err: unknown) => toast(err instanceof Error ? localize(err.message, tx) : t("admin.failed")));
+                    }}
+                  >
+                    {t("desk.remove")}
+                  </button>
+                </div>
+              </figure>
+            ))}
+            {pending.map((image, index) => (
+              <figure key={image.key} className="bg-ivory p-2">
+                <img src={image.dataUrl} alt="" className="aspect-[3/4] w-full object-cover" />
+                <div className="mt-2 flex gap-3 text-xs">
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() =>
+                      setPending((current) => [image, ...current.filter((item) => item.key !== image.key)])
+                    }
+                  >
+                    {index === 0 ? t("desk.coverSet") : t("desk.cover")}
+                  </button>
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => setPending((current) => current.filter((item) => item.key !== image.key))}
+                  >
+                    {t("desk.remove")}
+                  </button>
+                </div>
+              </figure>
+            ))}
+          </div>
+        )}
+      </section>
       <Field label={t("desk.productName")} value={name} onChange={(event) => setName(event.target.value)} required />
       <Field label={t("desk.slug")} value={slug} onChange={(event) => setSlug(event.target.value)} placeholder={t("desk.slugHint")} />
       <label className="block text-sm">
@@ -182,44 +314,6 @@ function Editor() {
           </div>
         ))}
       </div>
-      {id !== "new" ? (
-        <div>
-          <h2 className="text-2xl">{t("desk.images")}</h2>
-          <div className="mt-3 grid grid-cols-3 gap-3">
-            {images.map((image) => (
-              <figure key={image.id} className="bg-paper p-2">
-                <img src={image.url} alt={image.alt} className="aspect-[3/4] w-full object-cover" />
-                <div className="mt-2 flex gap-2 text-xs">
-                  <button type="button" onClick={() => void adminUpdateImage({ data: { id: image.id, cover: true } }).then(() => toast(t("desk.coverSet")))}>{t("desk.cover")}</button>
-                  <button type="button" onClick={() => void adminUpdateImage({ data: { id: image.id, delete: true } }).then(() => setImages((current) => current.filter((item) => item.id !== image.id)))}>{t("desk.remove")}</button>
-                </div>
-              </figure>
-            ))}
-          </div>
-          <label className="mt-3 block text-sm">
-            {t("desk.uploadHint")}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="mt-2 block"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (!file || id === "new") return;
-                const reader = new FileReader();
-                reader.onload = () => {
-                  const dataUrl = String(reader.result || "");
-                  void adminSaveImage({ data: { productId: id, dataUrl, alt: name } })
-                    .then((saved) => setImages((current) => [...current, { id: saved.id, url: dataUrl, alt: name, isCover: current.length === 0 }]))
-                    .catch((err: unknown) => toast(err instanceof Error ? localize(err.message, tx) : t("admin.failed")));
-                };
-                reader.readAsDataURL(file);
-              }}
-            />
-          </label>
-        </div>
-      ) : (
-        <p className="text-sm text-ash">{t("desk.saveFirst")}</p>
-      )}
       <Button type="submit" disabled={saving}>{saving ? t("desk.saving") : t("desk.saveProduct")}</Button>
     </form>
   );
