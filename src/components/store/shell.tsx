@@ -2,6 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Menu, Search, ShoppingBag, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { LanguageSwitch } from "@/components/language-switch";
+import { Mark } from "@/components/store/mark";
 import { quoteCart, getChrome } from "@/lib/commerce/fns";
 import { ensureSessionKey, useCart } from "@/lib/cart";
 import { localize } from "@/lib/i18n/text";
@@ -45,7 +46,7 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-ivory text-ink">
-      <div className="bg-ink px-4 py-2 text-center text-[11px] tracking-[0.16em] text-ivory uppercase">
+      <div className="bg-butter px-4 py-2 text-center text-[12px] text-ink">
         {copy(chrome?.announcement || t("nav.announcement"))}
       </div>
       <header className="sticky top-0 z-30 border-b border-line bg-ivory/90 backdrop-blur">
@@ -53,14 +54,14 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
           <button className="md:hidden" aria-label={t("nav.menu")} onClick={() => setMenu(true)}>
             <Menu className="size-5" />
           </button>
-          <Link to="/" className="font-display text-2xl tracking-[0.18em]">
-            ORRIS
+          <Link to="/" aria-label={chrome?.brandName || "MU"}>
+            <Mark name={chrome?.brandName || "MU"} />
           </Link>
           <nav className="ml-6 hidden items-center gap-6 text-sm md:flex">
             <Link to="/shop" className="hover:text-ash">{t("nav.shop")}</Link>
-            <Link to="/shop" search={{ category: "textiles" }} className="hover:text-ash">{t("nav.textiles")}</Link>
-            <Link to="/shop" search={{ category: "apparel" }} className="hover:text-ash">{t("nav.apparel")}</Link>
-            <Link to="/shop" search={{ category: "ceramic" }} className="hover:text-ash">{t("nav.ceramic")}</Link>
+            <Link to="/shop" search={{ pet: "dog" }} className="hover:text-ash">{t("nav.dogs")}</Link>
+            <Link to="/shop" search={{ pet: "cat" }} className="hover:text-ash">{t("nav.cats")}</Link>
+            <Link to="/shop" className="hover:text-ash">{t("nav.collections")}</Link>
             <Link to="/about" className="hover:text-ash">{t("nav.house")}</Link>
           </nav>
           <div className="ml-auto flex items-center gap-1">
@@ -82,21 +83,25 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-line">
         <div className="mx-auto grid max-w-6xl gap-8 px-4 py-14 md:grid-cols-4 md:px-6">
           <div className="md:col-span-2">
-            <p className="font-display text-2xl tracking-[0.16em]">{chrome?.brandName || "ORRIS"}</p>
+            <Mark name={chrome?.brandName || "MU"} />
             <p className="mt-3 max-w-sm text-sm leading-6 text-ash">
               {copy(chrome?.footerBlurb || t("nav.footer"))}
             </p>
           </div>
           <div className="text-sm leading-8">
+            <p className="text-xs tracking-[0.16em] text-ash uppercase">{t("nav.shop")}</p>
+            <Link to="/shop" search={{ pet: "dog" }} className="block">{t("nav.dogs")}</Link>
+            <Link to="/shop" search={{ pet: "cat" }} className="block">{t("nav.cats")}</Link>
+            <Link to="/shop" className="block">{t("nav.collections")}</Link>
             <Link to="/about" className="block">{t("nav.house")}</Link>
-            <Link to="/login" search={{ next: "account" }} className="block">{t("login.customerTitle")}</Link>
-            <Link to="/orders" className="block">{t("nav.findOrder")}</Link>
-            <Link to="/shop" className="block">{t("nav.allGoods")}</Link>
           </div>
           <div className="text-sm leading-8">
+            <p className="text-xs tracking-[0.16em] text-ash uppercase">{t("account.title")}</p>
+            <Link to="/login" search={{ next: "account" }} className="block">{t("login.customerTitle")}</Link>
+            <Link to="/orders" className="block">{t("nav.findOrder")}</Link>
             <Link to="/admin" className="block">{t("nav.merchant")}</Link>
             <LanguageSwitch />
-            <a href={`mailto:${chrome?.supportEmail || "atelier@orris.example"}`} className="block">{chrome?.supportEmail || "atelier@orris.example"}</a>
+            <a href={`mailto:${chrome?.supportEmail || "studio@mu.example"}`} className="block">{chrome?.supportEmail || "studio@mu.example"}</a>
           </div>
         </div>
       </footer>
@@ -107,8 +112,11 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
             <X />
           </button>
           <LanguageSwitch className="mt-4" />
-          <div className="mt-8 flex flex-col gap-5 font-display text-4xl">
+          <div className="mt-8 flex flex-col gap-5 font-display text-4xl tracking-[-0.04em]">
             <Link to="/shop" onClick={() => setMenu(false)}>{t("nav.shop")}</Link>
+            <Link to="/shop" search={{ pet: "dog" }} onClick={() => setMenu(false)}>{t("nav.dogs")}</Link>
+            <Link to="/shop" search={{ pet: "cat" }} onClick={() => setMenu(false)}>{t("nav.cats")}</Link>
+            <Link to="/shop" onClick={() => setMenu(false)}>{t("nav.collections")}</Link>
             <Link to="/about" onClick={() => setMenu(false)}>{t("nav.house")}</Link>
             <Link to="/account" onClick={() => setMenu(false)}>{t("nav.account")}</Link>
             <Link to="/orders" onClick={() => setMenu(false)}>{t("nav.orders")}</Link>
@@ -153,7 +161,7 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
             <ul className="space-y-5">
               {quote?.lines.map((line) => (
                 <li key={line.variantId} className="flex gap-3">
-                  <div className="h-24 w-20 bg-stone">
+                  <div className="h-24 w-20 overflow-hidden rounded-2xl bg-butter">
                     {line.image ? <img src={line.image} alt={copy(line.alt)} className="h-full w-full object-cover" /> : null}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -178,7 +186,7 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
             <span className="tabular-nums">{money(quote?.subtotalCents ?? 0)}</span>
           </div>
           <p className="mb-4 text-xs leading-5 text-ash">{t("bag.shippingNote")}</p>
-          <Button className="w-full" onClick={() => { setOpen(false); void navigate({ to: "/checkout" }); }} disabled={!quote?.lines.length}>
+          <Button variant="coral" className="w-full" onClick={() => { setOpen(false); void navigate({ to: "/checkout" }); }} disabled={!quote?.lines.length}>
             {t("bag.checkout")}
           </Button>
         </div>

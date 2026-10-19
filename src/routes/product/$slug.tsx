@@ -1,7 +1,8 @@
-import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { StoreShell } from "@/components/store/shell";
+import { ProductCard } from "@/components/store/product-card";
 import { Button, Photo } from "@/components/ui";
 import { ensureSessionKey, useCart } from "@/lib/cart";
 import { getProduct, trackEvent } from "@/lib/commerce/fns";
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/product/$slug")({
   },
   head: ({ loaderData }) => ({
     meta: [
-      { title: `${loaderData?.product.seoTitle ?? "Piece"} — ORRIS` },
+      { title: `${loaderData?.product.seoTitle ?? "Piece"} — ${loaderData?.settings.brandName ?? "MU"}` },
       { name: "description", content: loaderData?.product.seoDescription ?? "" },
       { name: "robots", content: "index,follow" },
     ],
@@ -47,13 +48,24 @@ function ProductPage() {
 
   return (
     <StoreShell>
-      <main className="mx-auto grid max-w-6xl gap-10 px-4 py-10 md:grid-cols-2 md:px-6">
-        <div className="aspect-[3/4] bg-stone">
-          {product.images[0] ? <Photo src={product.images[0].url} alt={product.images[0].alt} /> : null}
+      <main className="mx-auto grid max-w-6xl items-start gap-10 px-4 py-10 md:grid-cols-2 md:px-6">
+        <div>
+          <div className="aspect-[4/5] overflow-hidden rounded-t-[8rem] rounded-b-[1.6rem] bg-butter">
+            {product.images[0] ? <Photo src={product.images[0].url} alt={product.images[0].alt} className="bg-transparent object-contain p-6" /> : null}
+          </div>
+          {product.images.length > 1 ? (
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {product.images.slice(1, 5).map((image) => (
+                <div key={image.id} className="aspect-square overflow-hidden rounded-2xl bg-lilac">
+                  <Photo src={image.url} alt={image.alt} className="bg-transparent object-contain p-2" />
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div>
           <p className="text-xs tracking-[0.18em] text-ash uppercase">{copy(product.categoryName)}</p>
-          <h1 className="mt-2 text-4xl md:text-5xl">{copy(product.name)}</h1>
+          <h1 className="mt-2 text-4xl tracking-[-0.04em] md:text-6xl">{copy(product.name)}</h1>
           <p className="mt-4 text-lg tabular-nums">
             {money(variant.priceCents)}
             {variant.compareAtCents && variant.compareAtCents > variant.priceCents ? (
@@ -74,7 +86,7 @@ function ProductPage() {
                       key={value}
                       disabled={!match}
                       onClick={() => match && setVariantId(match.id)}
-                      className={active ? "h-11 border border-ink px-4 text-sm" : "h-11 border border-line px-4 text-sm"}
+                      className={active ? "h-11 rounded-full bg-ink px-4 text-sm text-ivory" : "h-11 rounded-full border border-line px-4 text-sm"}
                     >
                       {copy(value)}
                     </button>
@@ -84,12 +96,13 @@ function ProductPage() {
             </div>
           ))}
           <div className="mt-6 flex items-center gap-3">
-            <button className="grid size-11 place-items-center border border-line" onClick={() => setQty((n) => Math.max(1, n - 1))} aria-label={t("bag.decrease")}>–</button>
+            <button className="grid size-11 place-items-center rounded-full border border-line" onClick={() => setQty((n) => Math.max(1, n - 1))} aria-label={t("bag.decrease")}>–</button>
             <span className="w-6 text-center tabular-nums">{qty}</span>
-            <button className="grid size-11 place-items-center border border-line" onClick={() => setQty((n) => Math.min(10, n + 1))} aria-label={t("bag.increase")}>+</button>
+            <button className="grid size-11 place-items-center rounded-full border border-line" onClick={() => setQty((n) => Math.min(10, n + 1))} aria-label={t("bag.increase")}>+</button>
           </div>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Button
+              variant="coral"
               className="flex-1"
               disabled={variant.inventoryQty < 1}
               onClick={() => {
@@ -116,6 +129,9 @@ function ProductPage() {
           <p className="mt-4 text-xs text-ash">{t("product.sku", { sku: variant.sku })}</p>
           <div className="mt-8 divide-y divide-line border-y border-line">
             <Fold title={t("product.material")} id="material" open={open} setOpen={setOpen}>{copy(product.story)}</Fold>
+            {product.variants.some((item) => item.option1Name === "Size" || item.option2Name === "Size") ? (
+              <Fold title={t("product.fit")} id="fit" open={open} setOpen={setOpen}>{t("product.fitBody")}</Fold>
+            ) : null}
             <Fold title={t("product.shipping")} id="ship" open={open} setOpen={setOpen}>
               {t("product.shippingBody", {
                 standard: money(settings.shippingFlatCents),
@@ -131,14 +147,10 @@ function ProductPage() {
       </main>
       {related.length > 0 ? (
         <section className="mx-auto max-w-6xl px-4 pb-16 md:px-6">
-          <h2 className="mb-6 text-3xl">{t("product.alongside")}</h2>
+          <h2 className="mb-6 text-3xl tracking-[-0.03em]">{t("product.alongside")}</h2>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-            {related.map((item) => (
-              <Link key={item.id} to="/product/$slug" params={{ slug: item.slug }}>
-                <div className="aspect-[3/4] bg-stone">{item.images[0] ? <Photo src={item.images[0].url} alt={item.images[0].alt} /> : null}</div>
-                <p className="mt-3 text-sm">{copy(item.name)}</p>
-                <p className="text-sm tabular-nums">{money(item.priceCents)}</p>
-              </Link>
+            {related.map((item, index) => (
+              <ProductCard key={item.id} product={item} shape={index === 1 ? "arch" : "soft"} />
             ))}
           </div>
         </section>

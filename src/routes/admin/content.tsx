@@ -4,7 +4,7 @@ import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/admin/content")({
   component: ContentPage,
-  head: () => ({ meta: [{ title: "Content — ORRIS desk" }] }),
+  head: () => ({ meta: [{ title: "Content — Merchant desk" }] }),
 });
 
 function ContentPage() {

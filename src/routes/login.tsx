@@ -12,7 +12,7 @@ export const Route = createFileRoute("/login")({
     next: search.next === "admin" ? ("admin" as const) : ("account" as const),
   }),
   component: LoginPage,
-  head: () => ({ meta: [{ title: "Sign in — ORRIS" }] }),
+  head: () => ({ meta: [{ title: "Sign in — MU" }] }),
 });
 
 function LoginPage() {

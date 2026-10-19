@@ -4,7 +4,7 @@ import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/admin/settings")({
   component: SettingsPage,
-  head: () => ({ meta: [{ title: "Settings — ORRIS desk" }] }),
+  head: () => ({ meta: [{ title: "Settings — Merchant desk" }] }),
 });
 
 function SettingsPage() {

@@ -18,12 +18,12 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ORRIS" },
+      { title: "MU" },
       {
         name: "description",
-        content: "ORRIS — objects for a considered life. A single-house shop for cashmere, linen, ceramic and brass.",
+        content: "MU — a studio for the animals at home. Everyday objects for dogs and cats.",
       },
-      { name: "theme-color", content: "#FAF9F6" },
+      { name: "theme-color", content: "#FAF8F3" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
@@ -32,7 +32,7 @@ export const Route = createRootRoute({
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,560&family=Outfit:wght@300;400;500;600&family=Noto+Sans+JP:wght@400;500&family=Noto+Sans+KR:wght@400;500&family=Noto+Sans+SC:wght@400;500&family=Noto+Sans+TC:wght@400;500&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700&family=Outfit:wght@300;400;500;600&family=Noto+Sans+JP:wght@400;500&family=Noto+Sans+KR:wght@400;500&family=Noto+Sans+SC:wght@400;500&family=Noto+Sans+TC:wght@400;500&display=swap",
       },
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
@@ -48,7 +48,7 @@ function NotFound() {
   return (
     <main className="grid min-h-screen place-items-center bg-ivory px-6 text-center">
       <div>
-        <p className="text-xs tracking-[0.22em] text-ash uppercase">ORRIS</p>
+        <p className="font-display text-2xl tracking-[-0.04em]">MU</p>
         <h1 className="mt-3 text-4xl">{translate(locale, "notFound.title")}</h1>
         <a href="/" className="mt-6 inline-block text-sm underline underline-offset-4">
           {translate(locale, "notFound.back")}

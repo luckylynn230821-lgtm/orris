@@ -73,7 +73,7 @@ export function AdminFrame({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-stone text-ink md:grid md:grid-cols-[220px_1fr]">
       <aside className="bg-ink text-ivory md:min-h-screen">
         <div className="flex items-center justify-between px-4 py-5">
-          <Link to="/" className="font-display text-xl tracking-[0.16em]">ORRIS</Link>
+          <Link to="/" className="font-display text-xl tracking-[-0.04em]">Desk</Link>
           <div className="flex items-center gap-2">
             <LanguageSwitch tone="ink" />
             <UserButton />

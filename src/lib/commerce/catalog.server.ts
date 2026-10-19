@@ -225,10 +225,13 @@ export async function loadHome() {
     unitsByProduct(),
   ]);
   const ranked = [...products].sort((a, b) => (units.get(b.id) ?? 0) - (units.get(a.id) ?? 0));
+  const featured = products.filter((product) => product.tags.includes("featured"));
+  const topUnits = ranked[0] ? (units.get(ranked[0].id) ?? 0) : 0;
   return {
     settings: publicSettings(settings),
     categories,
-    bestSellers: ranked.slice(0, 4),
+    featured: (featured.length > 0 ? featured : products).slice(0, 4),
+    leaders: topUnits > 0 ? ranked.slice(0, 4) : [],
     newArrivals: [...products]
       .sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""))
       .slice(0, 4),
@@ -290,6 +293,7 @@ export async function loadCategories(): Promise<CategoryCard[]> {
 export async function loadShop(input: {
   q?: string;
   category?: string;
+  pet?: string;
   sort?: string;
   min?: number;
   max?: number;
@@ -304,6 +308,7 @@ export async function loadShop(input: {
   const q = (input.q ?? "").trim().toLowerCase();
   let items = products.filter((product) => {
     if (input.category && product.categorySlug !== input.category) return false;
+    if ((input.pet === "dog" || input.pet === "cat") && !product.tags.includes(input.pet)) return false;
     if (input.inStock && product.soldOut) return false;
     if (input.min && product.priceCents < input.min) return false;
     if (input.max && product.priceCents > input.max) return false;

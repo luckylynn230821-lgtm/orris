@@ -9,7 +9,7 @@ import type { RangeKey } from "@/lib/commerce/metrics";
 
 export const Route = createFileRoute("/admin/")({
   component: Overview,
-  head: () => ({ meta: [{ title: "Overview — ORRIS desk" }] }),
+  head: () => ({ meta: [{ title: "Overview — Merchant desk" }] }),
 });
 
 function Overview() {

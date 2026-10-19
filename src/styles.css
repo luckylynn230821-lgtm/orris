@@ -2,14 +2,19 @@
 
 @theme {
   --font-sans: "Outfit", "Avenir Next", "Segoe UI", sans-serif;
-  --font-display: "Fraunces", "Iowan Old Style", Palatino, serif;
-  --color-ivory: #faf9f6;
-  --color-stone: #f2f1ed;
+  --font-display: "Syne", "Outfit", sans-serif;
+  --color-ivory: #faf8f3;
+  --color-stone: #f3efe6;
   --color-paper: #ffffff;
-  --color-ink: #222222;
-  --color-ash: #777777;
-  --color-line: #e5e3de;
+  --color-ink: #292929;
+  --color-ash: #6f6a62;
+  --color-line: #e6e0d4;
   --color-brass: #8c734b;
+  --color-butter: #f6e8b8;
+  --color-mint: #dcede5;
+  --color-lilac: #e8e1f4;
+  --color-peach: #f4dbcf;
+  --color-coral: #ec836e;
   --color-good: #2f5d45;
   --color-danger: #8f3d3d;
   --radius-sm: 2px;
@@ -39,8 +44,17 @@
     text-wrap: pretty;
   }
   ::selection {
-    background: #e4d7c3;
+    background: #f6e8b8;
   }
+}
+
+@keyframes studio-in {
+  from { opacity: 0; transform: scale(1.03); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.studio-in {
+  animation: studio-in 700ms ease both;
 }
 
 @media (prefers-reduced-motion: reduce) {

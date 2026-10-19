@@ -1,17 +1,17 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { StoreShell } from "@/components/store/shell";
-import { Photo } from "@/components/ui";
+import { ProductCard } from "@/components/store/product-card";
 import { getShop } from "@/lib/commerce/fns";
-import { money } from "@/lib/format";
 import { useT } from "@/lib/i18n/provider";
 
-type ShopSearch = { q?: string; category?: string; sort?: string; stock?: string };
+type ShopSearch = { q?: string; category?: string; pet?: "dog" | "cat"; sort?: string; stock?: string };
 
 export const Route = createFileRoute("/shop")({
   validateSearch: (search: Record<string, unknown>): ShopSearch => ({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
     category: typeof search.category === "string" && search.category ? search.category : undefined,
+    pet: search.pet === "dog" || search.pet === "cat" ? search.pet : undefined,
     sort: typeof search.sort === "string" && search.sort ? search.sort : undefined,
     stock: search.stock === "1" ? "1" : undefined,
   }),
@@ -21,14 +21,15 @@ export const Route = createFileRoute("/shop")({
       data: {
         q: deps.q,
         category: deps.category,
+        pet: deps.pet,
         sort: deps.sort,
         inStock: deps.stock === "1",
       },
     }),
   head: ({ loaderData }) => ({
     meta: [
-      { title: `Shop — ${loaderData?.settings.brandName ?? "ORRIS"}` },
-      { name: "description", content: "The current ORRIS collection." },
+      { title: `Shop — ${loaderData?.settings.brandName ?? "MU"}` },
+      { name: "description", content: loaderData?.settings.tagline ?? "Everyday objects for dogs and cats." },
     ],
   }),
   component: ShopPage,
@@ -46,20 +47,42 @@ function ShopPage() {
     void navigate({ search: (prev) => ({ ...prev, ...patch }) });
   };
 
+  const title = search.pet === "dog"
+    ? t("shop.dogs")
+    : search.pet === "cat"
+      ? t("shop.cats")
+      : active
+        ? copy(active.name)
+        : search.q
+          ? `“${search.q}”`
+          : t("shop.allGoods");
+
   return (
     <StoreShell>
       <main className="mx-auto max-w-6xl px-4 py-10 md:px-6">
-        <p className="text-xs tracking-[0.2em] text-ash uppercase">{active ? copy(active.name) : t("shop.collection")}</p>
-        <h1 className="mt-2 text-4xl md:text-5xl">{active ? copy(active.name) : search.q ? `“${search.q}”` : t("shop.allGoods")}</h1>
+        <p className="text-xs tracking-[0.2em] text-ash uppercase">{t("shop.collection")}</p>
+        <h1 className="mt-2 text-5xl tracking-[-0.04em] md:text-6xl">{title}</h1>
         <p className="mt-3 max-w-xl text-sm leading-6 text-ash">
-          {active?.description ? copy(active.description) : t("shop.count", { count: data.products.length })}
+          {active?.description && !search.pet ? copy(active.description) : t("shop.count", { count: data.products.length })}
         </p>
+        <div className="mt-6 flex flex-wrap gap-2">
+          <PetChip label={t("shop.dogs")} active={search.pet === "dog"} onClick={() => setSearch({ pet: search.pet === "dog" ? undefined : "dog" })} />
+          <PetChip label={t("shop.cats")} active={search.pet === "cat"} onClick={() => setSearch({ pet: search.pet === "cat" ? undefined : "cat" })} />
+          {data.categories.map((category) => (
+            <PetChip
+              key={category.id}
+              label={copy(category.name)}
+              active={search.category === category.slug}
+              onClick={() => setSearch({ category: search.category === category.slug ? undefined : category.slug })}
+            />
+          ))}
+        </div>
         <div className="mt-8 flex flex-wrap items-center gap-3 text-sm">
-          <button className="h-11 border border-line px-4 md:hidden" onClick={() => setFilters(true)}>{t("shop.filter")}</button>
+          <button className="h-11 rounded-full border border-line px-4 md:hidden" onClick={() => setFilters(true)}>{t("shop.filter")}</button>
           <label className="ml-auto text-ash">
             {t("shop.sort")}
             <select
-              className="ml-2 h-11 border border-line bg-ivory px-2 text-ink"
+              className="ml-2 h-11 rounded-full border border-line bg-ivory px-3 text-ink"
               value={search.sort ?? "featured"}
               onChange={(event) => setSearch({ sort: event.target.value === "featured" ? undefined : event.target.value })}
             >
@@ -70,25 +93,13 @@ function ShopPage() {
             </select>
           </label>
         </div>
-        <div className="mt-8 grid gap-10 md:grid-cols-[200px_1fr]">
-          <aside className="hidden md:block">
-            <FilterList />
-          </aside>
+        <div className="mt-8">
           {data.products.length === 0 ? (
             <p className="text-sm text-ash">{t("shop.empty")}</p>
           ) : (
             <div className="grid grid-cols-2 gap-x-4 gap-y-10 lg:grid-cols-3">
-              {data.products.map((product) => (
-                <Link key={product.id} to="/product/$slug" params={{ slug: product.slug }}>
-                  <div className="relative aspect-[3/4] bg-stone">
-                    {product.images[0] ? <Photo src={product.images[0].url} alt={product.images[0].alt} /> : null}
-                    {product.soldOut ? (
-                      <span className="absolute bottom-3 left-3 bg-ivory px-2 py-1 text-[11px] tracking-wide uppercase">{t("shop.soldOut")}</span>
-                    ) : null}
-                  </div>
-                  <p className="mt-3 text-sm">{copy(product.name)}</p>
-                  <p className="text-sm text-ash tabular-nums">{money(product.priceCents)}</p>
-                </Link>
+              {data.products.map((product, index) => (
+                <ProductCard key={product.id} product={product} shape={index % 3 === 1 ? "arch" : "soft"} />
               ))}
             </div>
           )}
@@ -104,6 +115,17 @@ function ShopPage() {
         ) : null}
       </main>
     </StoreShell>
+  );
+}
+
+function PetChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={active ? "h-10 rounded-full bg-ink px-4 text-sm text-ivory" : "h-10 rounded-full border border-line px-4 text-sm"}
+    >
+      {label}
+    </button>
   );
 }
 

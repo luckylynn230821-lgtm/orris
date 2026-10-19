@@ -13,7 +13,7 @@ export const Route = createFileRoute("/order/$number")({
     email: typeof search.email === "string" ? search.email : undefined,
   }),
   component: OrderPage,
-  head: () => ({ meta: [{ title: "Order — ORRIS" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({ meta: [{ title: "Order — MU" }, { name: "robots", content: "noindex" }] }),
 });
 
 function OrderPage() {

@@ -12,7 +12,7 @@ const TABS = ["all", "unpaid", "toship", "toreceive", "toreview", "aftersales"] 
 
 export const Route = createFileRoute("/account")({
   component: AccountPage,
-  head: () => ({ meta: [{ title: "My orders — ORRIS" }] }),
+  head: () => ({ meta: [{ title: "My orders — MU" }] }),
 });
 
 function AccountPage() {

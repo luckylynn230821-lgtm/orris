@@ -45,6 +45,7 @@ export const getShop = createServerFn({ method: "GET" })
       .object({
         q: z.string().optional(),
         category: z.string().optional(),
+        pet: z.enum(["dog", "cat"]).optional(),
         sort: z.string().optional(),
         min: z.number().optional(),
         max: z.number().optional(),

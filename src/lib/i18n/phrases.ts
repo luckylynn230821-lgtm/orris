@@ -1,4 +1,5 @@
 import type { Locale } from "./locales";
+import { studioPhrases } from "./studio-phrases";
 
 /** Known house copy, keyed by the English stored in the shop. Merchant edits that do not match stay as written. */
 const phrases: Record<Exclude<Locale, "en">, Record<string, string>> = {
@@ -253,6 +254,8 @@ const phrases: Record<Exclude<Locale, "en">, Record<string, string>> = {
 
 export function phrase(locale: Locale, text: string): string {
   if (locale === "en" || !text) return text;
+  const studio = studioPhrases[locale];
+  if (studio[text]) return studio[text];
   const table = phrases[locale];
   if (table[text]) return table[text];
   if (text.includes(" / ")) return text.split(" / ").map((part) => table[part] ?? part).join(" / ");

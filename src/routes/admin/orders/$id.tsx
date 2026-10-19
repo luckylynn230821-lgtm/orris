@@ -9,7 +9,7 @@ import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/admin/orders/$id")({
   component: OrderDesk,
-  head: () => ({ meta: [{ title: "Order — ORRIS desk" }] }),
+  head: () => ({ meta: [{ title: "Order — Merchant desk" }] }),
 });
 
 function OrderDesk() {
@@ -70,7 +70,7 @@ function OrderDesk() {
           }}
         >
           <h2 className="text-2xl">{t("admin.toShipTitle")}</h2>
-          <Field label={t("admin.carrier")} name="carrier" placeholder="ORRIS dispatch" />
+          <Field label={t("admin.carrier")} name="carrier" placeholder="Studio dispatch" />
           <Field label={t("admin.tracking")} name="tracking" />
           <Button type="submit">{t("admin.shipAction")}</Button>
         </form>

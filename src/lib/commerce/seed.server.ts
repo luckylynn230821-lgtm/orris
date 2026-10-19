@@ -21,8 +21,8 @@ export function ensureSeeded(): Promise<void> {
     const existing = await query<{ seeded: boolean }>(
       "select seeded from store_settings where id = 1",
     );
-    if (existing[0]?.seeded) return;
-    await seedAll(query);
+    if (!existing[0]?.seeded) await seedAll(query);
+    await upgradeStudio(query);
   })
     .then(() => undefined)
     .catch((error) => {
@@ -349,4 +349,83 @@ async function seedAll(query: Query) {
   await query("update store_settings set seeded = true, updated_at = now() where id = 1");
   const check = await query<{ n: number }>("select count(*)::int as n from orders");
   if (num(check[0]?.n) < 10) throw new Error("Sample catalog did not seed");
+}
+
+/** One-way copy of the original house demo into the pet studio. Orders and on-hand counts stay. */
+async function upgradeStudio(query: Query) {
+  const rows = await query<{ brand_name: string }>("select brand_name from store_settings where id = 1");
+  if (rows[0]?.brand_name !== "ORRIS") return;
+  const settings = SEED_SETTINGS;
+  await query(
+    `update store_settings set
+      brand_name = $1, tagline = $2, announcement = $3, support_email = $4,
+      shipping_flat_cents = $5, express_shipping_cents = $6, free_shipping_threshold_cents = $7,
+      hero = $8::jsonb, benefits = $9::jsonb, editorial = $10::jsonb,
+      footer_blurb = $11, socials = $12::jsonb, updated_at = now()
+     where id = 1`,
+    [
+      settings.brandName,
+      settings.tagline,
+      settings.announcement,
+      settings.supportEmail,
+      settings.shippingFlatCents,
+      settings.expressShippingCents,
+      settings.freeShippingThresholdCents,
+      JSON.stringify(settings.hero),
+      JSON.stringify(settings.benefits),
+      JSON.stringify(settings.editorial),
+      settings.footerBlurb,
+      JSON.stringify(settings.socials),
+    ],
+  );
+  for (const category of SEED_CATEGORIES) {
+    await query(
+      `update categories set name = $2, slug = $3, description = $4, sort_order = $5 where id = $1`,
+      [category.id, category.name, category.slug, category.description, category.sort],
+    );
+  }
+  for (const product of SEED_PRODUCTS) {
+    await query(
+      `update products set
+        name = $2, slug = $3, description = $4, story = $5, category_id = $6,
+        tags = $7::jsonb, seo_title = $8, seo_description = $9
+       where id = $1`,
+      [
+        product.id,
+        product.name,
+        product.slug,
+        product.description,
+        product.story,
+        product.categoryId,
+        JSON.stringify(product.tags),
+        product.seoTitle,
+        product.seoDescription,
+      ],
+    );
+    await query(`update product_images set url = $2, alt = $3 where id = $1`, [
+      `img_${product.id}`,
+      product.image,
+      product.alt,
+    ]);
+    for (const [index, variant] of product.variants.entries()) {
+      await query(
+        `update product_variants set
+          sku = $2, title = $3, option1_name = $4, option1_value = $5,
+          option2_name = $6, option2_value = $7, price_cents = $8, cost_cents = $9, position = $10
+         where id = $1`,
+        [
+          variant.id,
+          variant.sku,
+          variant.title,
+          variant.option1Name,
+          variant.option1Value,
+          variant.option2Name,
+          variant.option2Value,
+          variant.priceCents,
+          variant.costCents,
+          index,
+        ],
+      );
+    }
+  }
 }

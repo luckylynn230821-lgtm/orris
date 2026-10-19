@@ -10,7 +10,7 @@ import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
-  head: () => ({ meta: [{ title: "Checkout — ORRIS" }] }),
+  head: () => ({ meta: [{ title: "Checkout — MU" }] }),
 });
 
 function CheckoutPage() {
@@ -102,7 +102,7 @@ function CheckoutPage() {
             </label>
           </fieldset>
           {error ? <p className="text-sm text-danger">{error}</p> : null}
-          <Button type="submit" disabled={pending || !quote?.lines.length}>{pending ? t("checkout.placing") : t("checkout.place")}</Button>
+          <Button type="submit" variant="coral" disabled={pending || !quote?.lines.length}>{pending ? t("checkout.placing") : t("checkout.place")}</Button>
         </form>
         <aside className="h-fit border border-line bg-paper p-5">
           <h2 className="text-2xl">{t("checkout.summary")}</h2>

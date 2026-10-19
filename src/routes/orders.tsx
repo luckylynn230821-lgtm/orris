@@ -7,7 +7,7 @@ import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/orders")({
   component: LookupPage,
-  head: () => ({ meta: [{ title: "Find an order — ORRIS" }] }),
+  head: () => ({ meta: [{ title: "Find an order — MU" }] }),
 });
 
 function LookupPage() {

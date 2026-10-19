@@ -9,7 +9,7 @@ const FILTERS = ["all", "queue", "toship", "toreceive", "aftersales"] as const;
 
 export const Route = createFileRoute("/admin/orders/")({
   component: OrdersPage,
-  head: () => ({ meta: [{ title: "Orders — ORRIS desk" }] }),
+  head: () => ({ meta: [{ title: "Orders — Merchant desk" }] }),
 });
 
 function OrdersPage() {

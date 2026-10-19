@@ -8,7 +8,7 @@ import type { RangeKey } from "@/lib/commerce/metrics";
 
 export const Route = createFileRoute("/admin/analytics")({
   component: AnalyticsPage,
-  head: () => ({ meta: [{ title: "Analytics — ORRIS desk" }] }),
+  head: () => ({ meta: [{ title: "Analytics — Merchant desk" }] }),
 });
 
 function AnalyticsPage() {

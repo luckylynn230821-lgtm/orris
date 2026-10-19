@@ -5,13 +5,14 @@ export function Button({
   variant = "primary",
   className,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "ghost" | "text" }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "ghost" | "text" | "coral" }) {
   return (
     <button
       className={cn(
-        "inline-flex h-11 items-center justify-center gap-2 px-5 text-sm transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-40",
+        "inline-flex h-11 items-center justify-center gap-2 px-5 text-sm transition duration-200 disabled:cursor-not-allowed disabled:opacity-40",
         variant === "primary" && "bg-ink text-ivory hover:bg-ink/85",
-        variant === "ghost" && "border border-line bg-paper text-ink hover:bg-stone",
+        variant === "coral" && "rounded-full bg-coral text-ink hover:brightness-95",
+        variant === "ghost" && "rounded-full border border-line bg-paper text-ink hover:bg-stone",
         variant === "text" && "h-auto px-0 text-ink underline-offset-4 hover:underline",
         className,
       )}

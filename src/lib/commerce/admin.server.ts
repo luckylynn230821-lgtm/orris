@@ -482,7 +482,7 @@ export async function fulfillOrder(userId: string, input: { id: string; carrier:
     if (rows[0].fulfillment_status === "shipped" || rows[0].fulfillment_status === "fulfilled") {
       throw userError("err.alreadyShipped");
     }
-    const carrier = input.carrier.trim() || "ORRIS dispatch";
+    const carrier = input.carrier.trim() || "Studio dispatch";
     const tracking = input.tracking.trim();
     await query(
       `update orders set fulfillment_status = 'shipped' where id = $1`,

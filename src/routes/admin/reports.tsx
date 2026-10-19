@@ -7,7 +7,7 @@ import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/admin/reports")({
   component: ReportsPage,
-  head: () => ({ meta: [{ title: "Reports — ORRIS desk" }] }),
+  head: () => ({ meta: [{ title: "Reports — Merchant desk" }] }),
 });
 
 function ReportsPage() {

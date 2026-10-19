@@ -9,7 +9,7 @@ import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/admin/products/$id")({
   component: Editor,
-  head: () => ({ meta: [{ title: "Edit product — ORRIS desk" }] }),
+  head: () => ({ meta: [{ title: "Edit product — Merchant desk" }] }),
 });
 
 type VariantDraft = {

@@ -10,7 +10,7 @@ import { localize } from "@/lib/i18n/text";
 
 export const Route = createFileRoute("/cart")({
   component: CartPage,
-  head: () => ({ meta: [{ title: "Bag — ORRIS" }] }),
+  head: () => ({ meta: [{ title: "Bag — MU" }] }),
 });
 
 function CartPage() {
@@ -61,7 +61,7 @@ function CartPage() {
             <p className="mt-2 text-sm text-ash">
               {quote.subtotalCents >= quote.thresholdCents ? t("bag.standardFree") : t("bag.standardPaid", { amount: money(quote.standardCents) })}
             </p>
-            <Link to="/checkout" className="mt-6 inline-flex h-11 items-center bg-ink px-5 text-sm text-ivory">{t("bag.continue")}</Link>
+            <Link to="/checkout" className="mt-6 inline-flex h-11 items-center rounded-full bg-coral px-5 text-sm text-ink">{t("bag.continue")}</Link>
             <Button variant="text" className="ml-4" onClick={() => lines.forEach((line) => setQty(line.variantId, 0))}>{t("bag.clear")}</Button>
           </div>
         )}
