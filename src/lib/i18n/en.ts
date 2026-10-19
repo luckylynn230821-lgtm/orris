@@ -137,7 +137,7 @@ export const en = {
     title: "Objects for the animals at home.",
     p1: "MU is a demonstration studio for dogs and cats: bowls, a leash, a bed, clothing and a brush. The name is a setting, so it can be replaced. Prices, stock and orders on this site come from one set of books, not a pasted catalogue.",
     p2: "Checkout is a demonstration rail. It checks price and stock on the server, writes an order and an inventory movement, and never pretends a card was charged. A live card processor can replace that rail without changing the books.",
-    p3: "The first person to open the merchant desk becomes the owner. The owner can add ten more people, as managers or as staff. Everyone else can browse, and can see only their own orders when they are signed in. Cost, margin and other customers stay off the public pages. Photography for this studio was made for the template. The name still needs a trademark search before a real launch.",
+    p3: "The owner is luckylynn230821@gmail.com. Opening the desk first does not make someone the owner. The owner can add ten more people, as managers or as staff. Everyone else can browse, and can see only their own orders when they are signed in. Cost, margin and other customers stay off the public pages. Photography for this studio was made for the template. The name still needs a trademark search before a real launch.",
     cta: "Shop the studio",
   },
   login: {
@@ -148,7 +148,7 @@ export const en = {
     customerBody:
       "Sign in to follow your own orders: to pay, to ship, to receive, to review, and refunds or after-sales. When the house ships, the status updates here.",
     merchantBody:
-      "Sign in here for the merchant desk, not the customer account. The first person to open the desk becomes the owner and can add ten more people.",
+      "Sign in here for the merchant desk, not the customer account. The owner is luckylynn230821@gmail.com. That account can add ten more people.",
     signedIn: "Signed in as {{email}}.",
     continue: "Continue",
     name: "Name",
@@ -262,7 +262,7 @@ export const en = {
     team: "Team",
     gateKicker: "Merchant desk",
     gateTitle: "Sign in to keep the books.",
-    gateBody: "This door is only for the desk. The first person to open it becomes the owner, and can add ten more people. Customers should use Account instead.",
+    gateBody: "This door is only for the desk. The owner is luckylynn230821@gmail.com, and that account can add ten more people. Customers should use Account instead.",
     gateEmail: "Sign in with email",
     gateWith: "Continue with {{provider}}",
     roleOwner: "Owner",

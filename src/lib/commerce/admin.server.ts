@@ -6,7 +6,7 @@ import { stageOf } from "./stages";
 import { faceFor } from "./customer.server";
 import { ensureSeeded } from "./seed.server";
 import { withTx } from "./tx.server";
-import { STAFF_CAP, can, deskPermissions, type DeskRole, type PermissionRequest } from "./access";
+import { FOUNDER_EMAIL, STAFF_CAP, can, deskPermissions, type DeskRole, type PermissionRequest } from "./access";
 import { PUBLIC_CARRIERS, deliverMail, detectCarrier, trackingLink } from "./shipping";
 
 function asRole(role: string): DeskRole {
@@ -15,14 +15,34 @@ function asRole(role: string): DeskRole {
   throw userError("err.forbidden");
 }
 
+async function reconcileFounder() {
+  const sql = await getSql();
+  const founders = await sql<{ id: string; name: string | null }>`
+    select id, name from "user" where lower(email) = ${FOUNDER_EMAIL}
+  `;
+  const founder = founders[0];
+  if (founder) {
+    await sql`update store_members set role = 'manager' where role = 'owner' and user_id <> ${founder.id}`;
+    await sql`
+      insert into store_members (user_id, role, email, name)
+      values (${founder.id}, 'owner', ${FOUNDER_EMAIL}, ${founder.name})
+      on conflict (user_id) do update set role = 'owner', email = ${FOUNDER_EMAIL}, name = ${founder.name}
+    `;
+    return;
+  }
+  await sql`update store_members set role = 'manager' where role = 'owner'`;
+}
+
 async function actor(userId: string) {
   await ensureSeeded();
   const sql = await getSql();
   const people = await sql<{ email: string; name: string }>`select email, name from "user" where id = ${userId}`;
   const email = people[0]?.email?.trim().toLowerCase() ?? null;
   const name = people[0]?.name ?? null;
+  await reconcileFounder();
   const members = await sql<{ user_id: string; role: string }>`select user_id, role from store_members`;
   if (members.length === 0) {
+    if (email !== FOUNDER_EMAIL) throw userError("err.notOnDesk");
     try {
       await sql`insert into store_members (user_id, role, email, name) values (${userId}, 'owner', ${email}, ${name})`;
       await sql`insert into audit_logs (actor_id, action, entity, entity_id, detail) values (${userId}, 'claim_store', 'store', '1', ${JSON.stringify({ email })}::jsonb)`;
