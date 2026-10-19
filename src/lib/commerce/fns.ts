@@ -424,6 +424,14 @@ export const adminAccept = createServerFn({ method: "POST" })
     return guard(() => acceptOrder(context.userId, data.id));
   });
 
+export const adminAcceptMany = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => z.object({ ids: z.array(z.string().min(1)).max(50) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { acceptOrders } = await import("./admin.server");
+    return guard(() => acceptOrders(context.userId, data.ids));
+  });
+
 export const adminCarriers = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {

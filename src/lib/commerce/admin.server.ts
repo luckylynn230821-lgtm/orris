@@ -7,7 +7,7 @@ import { faceFor } from "./customer.server";
 import { ensureSeeded } from "./seed.server";
 import { withTx } from "./tx.server";
 import { STAFF_CAP, can, deskPermissions, type DeskRole, type PermissionRequest } from "./access";
-import { deliverMail, trackingLink } from "./shipping";
+import { PUBLIC_CARRIERS, deliverMail, detectCarrier, trackingLink } from "./shipping";
 
 function asRole(role: string): DeskRole {
   if (role === "owner" || role === "administrator") return "owner";
@@ -435,6 +435,7 @@ export async function listOrders(userId: string, q: string) {
     select id, number, email, customer_name, status, payment_status, fulfillment_status,
            total_cents, refunded_cents, currency, is_demo, created_at,
            exists(select 1 from order_reviews r where r.order_id = orders.id) as reviewed,
+           exists(select 1 from order_events e where e.order_id = orders.id and e.message like 'event.accepted%') as accepted,
            coalesce((select s.status from service_requests s where s.order_id = orders.id order by s.created_at desc limit 1), 'none') as service_status
     from orders
     where ${q.trim()} = '' or lower(number) like ${query} or lower(email) like ${query} or lower(customer_name) like ${query}
@@ -453,6 +454,7 @@ export async function listOrders(userId: string, q: string) {
     refundedCents: num(row.refunded_cents),
     currency: String(row.currency),
     isDemo: Boolean(row.is_demo),
+    accepted: Boolean(row.accepted),
     createdAt: iso(row.created_at),
     ...(() => {
       const stage = stageOf({
@@ -541,9 +543,13 @@ export async function fulfillOrder(userId: string, input: { id: string; carrier:
         select name, tracking_url, cost_cents from carriers where id = ${input.carrierId} and active = true
       `)[0]
     : undefined;
-  const carrier = chosen?.name || input.carrier.trim() || "Studio dispatch";
   const tracking = input.tracking.trim();
-  const url = trackingLink(chosen?.tracking_url ?? "", tracking);
+  const detected = tracking ? detectCarrier(tracking) : null;
+  const carrier = chosen?.name || input.carrier.trim() || detected?.carrier || "Studio dispatch";
+  const fromBook = chosen?.tracking_url?.includes("{{tracking}}")
+    ? trackingLink(chosen.tracking_url, tracking)
+    : "";
+  const url = fromBook || detected?.url || "";
   const cost = chosen ? num(chosen.cost_cents) : 0;
   let email = "";
   await withTx(async (query) => {
@@ -955,11 +961,20 @@ export async function listCarriers(userId: string) {
   const session = await canFulfillOrEdit(userId);
   const seeCost = can(session.role, { money: ["read"] });
   const sql = await getSql();
+  const count = await sql<{ n: number }>`select count(*)::int as n from carriers`;
+  if (num(count[0]?.n) === 0) {
+    for (const carrier of PUBLIC_CARRIERS) {
+      await sql`
+        insert into carriers (id, name, tracking_url, cost_cents)
+        values (${crypto.randomUUID()}, ${carrier.name}, ${carrier.trackingUrl}, 0)
+      `;
+    }
+  }
   const rows = await sql<{ id: string; name: string; tracking_url: string; cost_cents: number; active: boolean }>`
     select id, name, tracking_url, cost_cents, active from carriers order by created_at
   `;
   return {
-    connected: false as const,
+    connected: "public" as const,
     carriers: rows.map((row) => ({
       id: row.id,
       name: row.name,
@@ -1013,6 +1028,16 @@ export async function acceptOrder(userId: string, id: string) {
   await recordMail("order_accepted", order.email, id, "event.accepted", {});
   await audit(userId, "accept_order", "order", id, {});
   return { ok: true, mail: deliverMail() };
+}
+
+export async function acceptOrders(userId: string, ids: string[]) {
+  const unique = [...new Set(ids.map((id) => id.trim()).filter(Boolean))].slice(0, 50);
+  let count = 0;
+  for (const id of unique) {
+    const result = await acceptOrder(userId, id);
+    if (!("already" in result && result.already)) count += 1;
+  }
+  return { count };
 }
 
 export async function broadcastCustomers(userId: string, input: { subject: string; body: string }) {

@@ -1,9 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button, Field } from "@/components/ui";
 import { useDeskAccess } from "@/components/admin/frame";
 import { adminAccept, adminCancel, adminCarriers, adminFulfill, adminOrder, adminRefund, adminResolveService } from "@/lib/commerce/fns";
+import { publicHttpUrl } from "@/lib/commerce/shipping";
 import { dollarsToCents, money } from "@/lib/format";
 import { localize } from "@/lib/i18n/text";
 import { useT } from "@/lib/i18n/provider";
@@ -42,10 +43,11 @@ function OrderDesk() {
   const remaining = order.totalCents - order.refundedCents;
   const accepted = order.events.some((item) => item.message === "event.accepted" || item.message.startsWith("event.accepted\n"));
   const shipment = order.fulfillments.at(-1);
-  const lookup = safeUrl(shipment?.trackingUrl ?? "");
+  const lookup = publicHttpUrl(shipment?.trackingUrl ?? "");
   return (
     <div className="max-w-3xl">
-      <p className="text-xs tracking-[0.16em] text-ash uppercase">{order.isDemo ? t("admin.sampleOrder") : t("admin.liveOrder")}</p>
+      <Link to="/admin/orders" className="text-sm underline">{t("desk.backOrders")}</Link>
+      <p className="mt-4 text-xs tracking-[0.16em] text-ash uppercase">{order.isDemo ? t("admin.sampleOrder") : t("admin.liveOrder")}</p>
       <h1 className="text-4xl">{order.number}</h1>
       <p className="mt-2 text-sm">{order.name} · {order.email}</p>
       <p className="mt-4 text-2xl">{tx(order.stageLabel)}</p>
@@ -117,7 +119,7 @@ function OrderDesk() {
           {carriers.length === 0 ? <p className="text-xs text-ash">{t("desk.noCarriers")}</p> : null}
           {carrierId ? null : <Field label={t("admin.carrier")} name="carrier" />}
           <Field label={t("admin.tracking")} name="tracking" />
-          <p className="text-xs text-ash">{t("desk.notConnected")}</p>
+          <p className="text-xs text-ash">{t("desk.trackPublic")}</p>
           <Button type="submit">{t("admin.shipAction")}</Button>
         </form>
       ) : null}
@@ -186,15 +188,6 @@ function OrderDesk() {
       ) : null}
     </div>
   );
-}
-
-function safeUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : "";
-  } catch {
-    return "";
-  }
 }
 
 function payLabel(value: string, t: (key: MessageKey) => string) {

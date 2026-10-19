@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useDeskAccess } from "@/components/admin/frame";
 import { Button, Field } from "@/components/ui";
 import { adminCarriers, adminSaveCarrier } from "@/lib/commerce/fns";
+import { publicHttpUrl, trackLive, type LiveTracking } from "@/lib/commerce/shipping";
 import { centsToInput, dollarsToCents, money } from "@/lib/format";
 import { localize } from "@/lib/i18n/text";
 import { useT } from "@/lib/i18n/provider";
@@ -24,6 +25,8 @@ function LogisticsPage() {
   const canEdit = access?.permissions.settings ?? false;
   const [rows, setRows] = useState<Awaited<ReturnType<typeof adminCarriers>>["carriers"]>([]);
   const [draft, setDraft] = useState<Draft>(blank);
+  const [number, setNumber] = useState("");
+  const [hit, setHit] = useState<LiveTracking | null>(null);
   const load = () => {
     void adminCarriers()
       .then((value) => setRows(value.carriers))
@@ -34,8 +37,32 @@ function LogisticsPage() {
     <div className="max-w-3xl">
       <h1 className="text-4xl">{t("desk.logisticsTitle")}</h1>
       <p className="mt-3 max-w-2xl text-sm leading-6 text-ash">{t("desk.logisticsBody")}</p>
-      <p className="mt-2 text-sm text-ash">{t("desk.notConnected")}</p>
       {!seeCost ? <p className="mt-2 text-sm text-ash">{t("desk.costOwner")}</p> : null}
+      <form
+        className="mt-6 grid gap-3 bg-paper p-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const result = trackLive({ tracking: number });
+          setHit(result);
+        }}
+      >
+        <h2 className="text-2xl">{t("desk.trackLookup")}</h2>
+        <Field label={t("desk.trackNumber")} value={number} onChange={(event) => setNumber(event.target.value)} />
+        <Button type="submit">{t("desk.trackLookup")}</Button>
+        {hit?.connected ? (
+          <div className="text-sm">
+            <p>{t("desk.detected", { carrier: hit.carrier })}</p>
+            <p className="mt-1 text-ash">{t("desk.trackPublic")}</p>
+            {publicHttpUrl(hit.url) ? (
+              <a className="mt-2 inline-block underline" href={publicHttpUrl(hit.url)} target="_blank" rel="noreferrer">
+                {t("desk.trackOpen")}
+              </a>
+            ) : null}
+          </div>
+        ) : hit ? (
+          <p className="text-sm text-ash">{t("desk.trackMissing")}</p>
+        ) : null}
+      </form>
       <div className="mt-6 overflow-auto bg-paper">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="text-xs text-ash uppercase">
