@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { RangeBar, useAnalytics } from "@/components/admin/analytics-view";
 import { adminSettings } from "@/lib/commerce/fns";
-import { toCsv, type RangeKey } from "@/lib/commerce/metrics";
+import { LEDGER_CLASS, LEDGER_CODES, toCsv, type LedgerCode, type RangeKey } from "@/lib/commerce/metrics";
 import { growthLabel, money, pct } from "@/lib/format";
 import { useT } from "@/lib/i18n/provider";
 import type { MessageKey } from "@/lib/i18n/translate";
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/admin/reports")({
   head: () => ({ meta: [{ title: "Reports — Merchant desk" }] }),
 });
 
-const BOOKS = ["pnl", "sales", "products", "profit", "tax", "cash", "stock"] as const;
+const BOOKS = ["accounts", "journal", "trial", "balance", "pnl", "sales", "products", "profit", "tax", "cash", "stock"] as const;
 type Book = (typeof BOOKS)[number];
 
 function ReportsPage() {
@@ -34,7 +34,41 @@ function ReportsPage() {
     if (!data) return;
     const vat = Math.round(data.kpis.netCents * rates.vat);
     const imported = Math.round(data.kpis.netCents * rates.importTax);
+    const posted = data.ledger.lines.map((line) => [
+      line.code,
+      t(`books.acct${line.code}` as MessageKey),
+      line.debitCents ? money(line.debitCents) : "",
+      line.creditCents ? money(line.creditCents) : "",
+    ]);
+    const books = closeBooks(data.ledger);
     const files: Record<Book, { name: string; csv: string }> = {
+      accounts: {
+        name: "chart-of-accounts.csv",
+        csv: toCsv([t("books.code"), t("books.kind"), t("books.debit"), t("books.credit")], posted),
+      },
+      journal: {
+        name: "journal.csv",
+        csv: toCsv([t("books.code"), t("books.accounts"), t("books.debit"), t("books.credit")], posted),
+      },
+      trial: {
+        name: "trial-balance.csv",
+        csv: toCsv([t("books.code"), t("books.accounts"), t("books.debit"), t("books.credit")], posted),
+      },
+      balance: {
+        name: "balance-sheet.csv",
+        csv: toCsv(
+          [t("books.balance"), t("desk.net")],
+          [
+            [t("books.acct1000"), money(books.cash)],
+            [t("books.inventoryRelief"), money(books.relieved)],
+            [t("books.assets"), money(books.assets)],
+            [t("books.acct2100"), money(books.tax)],
+            [t("books.acct2110"), money(books.freight)],
+            [t("books.liabilities"), money(books.liabilities)],
+            [t("books.earnings"), money(books.equity)],
+          ],
+        ),
+      },
       pnl: {
         name: "profit-and-loss.csv",
         csv: toCsv(
@@ -119,6 +153,7 @@ function ReportsPage() {
         <div>
           <h1 className="text-4xl">{t("admin.reportsTitle")}</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-ash">{t("books.intro")}</p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-ash">{t("books.doubleEntry")}</p>
         </div>
         {data ? (
           <button className="h-11 border border-line bg-paper px-4 text-sm" onClick={download}>
@@ -167,6 +202,69 @@ function BookView({
 }) {
   const { t } = useT();
   const k = data.kpis;
+  const books = closeBooks(data.ledger);
+  if (book === "accounts" || book === "journal" || book === "trial") {
+    const rows = LEDGER_CODES.map((code) => data.ledger.lines.find((line) => line.code === code) ?? { code, debitCents: 0, creditCents: 0 });
+    const visible = book === "accounts" ? rows : rows.filter((line) => line.debitCents !== 0 || line.creditCents !== 0);
+    return (
+      <section className="mt-6">
+        <h2 className="text-2xl">{t(`books.${book}` as MessageKey)}</h2>
+        <p className="mt-2 text-sm text-ash">{t("books.cashBasis")} {t("books.balanced")}</p>
+        <div className="mt-4 overflow-auto bg-paper">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="text-xs text-ash uppercase">
+              <tr>
+                <th className="p-3">{t("books.code")}</th>
+                <th className="p-3">{t("books.accounts")}</th>
+                {book === "accounts" ? <th className="p-3">{t("books.kind")}</th> : null}
+                <th className="p-3">{t("books.debit")}</th>
+                <th className="p-3">{t("books.credit")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((line) => (
+                <tr key={line.code} className="border-t border-line">
+                  <td className="p-3 tabular-nums">{line.code}</td>
+                  <td className="p-3">{t(`books.acct${line.code}` as MessageKey)}</td>
+                  {book === "accounts" ? <td className="p-3">{t(`books.${LEDGER_CLASS[line.code as LedgerCode]}` as MessageKey)}</td> : null}
+                  <td className="p-3 tabular-nums">{line.debitCents ? money(line.debitCents) : "—"}</td>
+                  <td className="p-3 tabular-nums">{line.creditCents ? money(line.creditCents) : "—"}</td>
+                </tr>
+              ))}
+              {book !== "accounts" ? (
+                <tr className="border-t border-line">
+                  <td className="p-3" colSpan={2}>{t("books.total")}</td>
+                  <td className="p-3 tabular-nums">{money(data.ledger.debitCents)}</td>
+                  <td className="p-3 tabular-nums">{money(data.ledger.creditCents)}</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+  if (book === "balance") {
+    return (
+      <section className="mt-6 max-w-xl bg-paper p-5">
+        <h2 className="text-2xl">{t("books.balance")}</h2>
+        <p className="mt-2 text-sm text-ash">{t("books.cashBasis")}</p>
+        <p className="mt-6 text-xs tracking-[0.14em] text-ash uppercase">{t("books.assets")}</p>
+        <Row label={t("books.acct1000")} value={money(books.cash)} />
+        <Row label={t("books.inventoryRelief")} value={money(books.relieved)} dim />
+        {books.suspense > 0 ? <Row label={t("books.acct9990")} value={money(books.suspense)} /> : null}
+        <Row label={t("books.total")} value={money(books.assets)} strong />
+        <p className="mt-6 text-xs tracking-[0.14em] text-ash uppercase">{t("books.liabilities")}</p>
+        <Row label={t("books.acct2100")} value={money(books.tax)} />
+        <Row label={t("books.acct2110")} value={money(books.freight)} />
+        {books.suspense < 0 ? <Row label={t("books.acct9990")} value={money(-books.suspense)} /> : null}
+        <Row label={t("books.total")} value={money(books.liabilities)} strong />
+        <p className="mt-6 text-xs tracking-[0.14em] text-ash uppercase">{t("books.equity")}</p>
+        <Row label={t("books.acct3200")} value={money(books.equity)} strong />
+        <Row label={t("books.liabilities") + " + " + t("books.equity")} value={money(books.liabilities + books.equity)} />
+      </section>
+    );
+  }
   const vat = Math.round(k.netCents * rates.vat);
   const imported = Math.round(k.netCents * rates.importTax);
   const stockUnits = data.products.reduce((sum, row) => sum + row.inventory, 0);
@@ -357,6 +455,19 @@ function BookView({
       {data.products.length === 0 ? <p className="mt-4 text-sm text-ash">{t("books.empty")}</p> : null}
     </section>
   );
+}
+
+function closeBooks(ledger: { lines: { code: string; debitCents: number; creditCents: number }[] }) {
+  const side = (code: string, column: "debitCents" | "creditCents") =>
+    ledger.lines.find((line) => line.code === code)?.[column] ?? 0;
+  const cash = side("1000", "debitCents") - side("1000", "creditCents");
+  const relieved = side("1400", "creditCents") - side("1400", "debitCents");
+  const tax = side("2100", "creditCents") - side("2100", "debitCents");
+  const freight = side("2110", "creditCents") - side("2110", "debitCents");
+  const suspense = side("9990", "debitCents") - side("9990", "creditCents");
+  const assets = cash - relieved + Math.max(suspense, 0);
+  const liabilities = tax + freight + Math.max(-suspense, 0);
+  return { cash, relieved, tax, freight, suspense, assets, liabilities, equity: assets - liabilities };
 }
 
 function Row({ label, value, strong, dim }: { label: string; value: string; strong?: boolean; dim?: boolean }) {

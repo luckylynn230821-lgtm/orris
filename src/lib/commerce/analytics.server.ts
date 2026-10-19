@@ -9,6 +9,7 @@ import {
   resolveRange,
   summarize,
   windowDays,
+  buildLedger,
   type Insight,
   type LineFact,
   type OrderFact,
@@ -172,6 +173,7 @@ export async function loadAnalytics(input: {
     purchases: kpis.orders,
   };
 
+  const logisticsCostCents = await logisticsCost(sql, range.start, range.end, input.includeDemo);
   return {
     range: {
       key: range.key,
@@ -212,7 +214,8 @@ export async function loadAnalytics(input: {
       profit: "Net sales minus the cost snapshot of units still kept by the customer. Not net profit.",
       aov: "Paid order total after refunds, including shipping and tax, divided by paid orders.",
     },
-    logisticsCostCents: await logisticsCost(sql, range.start, range.end, input.includeDemo),
+    logisticsCostCents,
+    ledger: buildLedger(current, logisticsCostCents),
   };
 }
 

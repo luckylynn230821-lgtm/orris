@@ -507,6 +507,65 @@ export function windowDays(start: Date, end: Date): number {
   return Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000));
 }
 
+export const LEDGER_CODES = ["1000", "1400", "2100", "2110", "4000", "4100", "4900", "4910", "5000", "5100", "9990"] as const;
+export type LedgerCode = (typeof LEDGER_CODES)[number];
+export type LedgerClass = "asset" | "liability" | "equity" | "income" | "expense";
+
+export const LEDGER_CLASS: Record<LedgerCode, LedgerClass> = {
+  "1000": "asset",
+  "1400": "asset",
+  "2100": "liability",
+  "2110": "liability",
+  "4000": "income",
+  "4100": "income",
+  "4900": "income",
+  "4910": "income",
+  "5000": "expense",
+  "5100": "expense",
+  "9990": "equity",
+};
+
+export type LedgerLine = { code: LedgerCode; debitCents: number; creditCents: number };
+
+export type Ledger = {
+  lines: LedgerLine[];
+  debitCents: number;
+  creditCents: number;
+  earningsCents: number;
+};
+
+/** Cash-basis double entry for paid orders. Debits equal credits. */
+export function buildLedger(orders: OrderFact[], logisticsCostCents: number): Ledger {
+  const totals = summarize(orders.filter(countsAsSale));
+  const logistics = Math.max(0, logisticsCostCents);
+  const expected = totals.grossCents - totals.discountCents + totals.shippingCents + totals.taxCents;
+  const documented = totals.paidTotalCents + totals.refundCents;
+  const gap = expected - documented;
+  const raw: LedgerLine[] = [
+    { code: "1000", debitCents: totals.paidTotalCents, creditCents: 0 },
+    { code: "4900", debitCents: totals.discountCents, creditCents: 0 },
+    { code: "4910", debitCents: totals.refundCents, creditCents: 0 },
+    { code: "4000", debitCents: 0, creditCents: totals.grossCents },
+    { code: "4100", debitCents: 0, creditCents: totals.shippingCents },
+    { code: "2100", debitCents: 0, creditCents: totals.taxCents },
+    { code: "5000", debitCents: totals.cogsCents, creditCents: 0 },
+    { code: "1400", debitCents: 0, creditCents: totals.cogsCents },
+    { code: "5100", debitCents: logistics, creditCents: 0 },
+    { code: "2110", debitCents: 0, creditCents: logistics },
+  ];
+  if (gap > 0) raw.push({ code: "9990", debitCents: gap, creditCents: 0 });
+  else if (gap < 0) raw.push({ code: "9990", debitCents: 0, creditCents: -gap });
+  const lines = raw.filter((line) => line.debitCents !== 0 || line.creditCents !== 0);
+  const debitCents = lines.reduce((sum, line) => sum + line.debitCents, 0);
+  const creditCents = lines.reduce((sum, line) => sum + line.creditCents, 0);
+  return {
+    lines,
+    debitCents,
+    creditCents,
+    earningsCents: totals.profitCents + totals.shippingCents - logistics,
+  };
+}
+
 export function toCsv(headers: string[], rows: (string | number | null | undefined)[][]): string {
   const esc = (value: string | number | null | undefined) => {
     if (value === null || value === undefined) return "";

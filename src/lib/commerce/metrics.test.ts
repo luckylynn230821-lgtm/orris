@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  buildLedger,
   dailySeries,
   diagnose,
   growth,
@@ -39,6 +40,24 @@ const line = {
 };
 
 describe("commerce metrics", () => {
+  it("posts a balanced double-entry journal for a paid order", () => {
+    const ledger = buildLedger(
+      [
+        order({
+          lines: [line],
+          shippingCents: 1800,
+          taxCents: 500,
+          totalCents: 48000 + 1800 + 500,
+        }),
+      ],
+      700,
+    );
+    assert.equal(ledger.debitCents, ledger.creditCents);
+    assert.equal(ledger.earningsCents, 48000 - 18600 + 1800 - 700);
+    assert.equal(ledger.lines.find((row) => row.code === "4000")?.creditCents, 48000);
+    assert.equal(ledger.lines.some((row) => row.code === "9990"), false);
+  });
+
   it("keeps shipping and tax out of net sales and gross profit", () => {
     const econ = orderEconomics(
       order({
