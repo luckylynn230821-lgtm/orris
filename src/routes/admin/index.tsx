@@ -24,7 +24,7 @@ function Overview() {
         <div className="mt-6 flex gap-4 text-sm">
           {manager ? <Link to="/admin/products" className="underline">{t("admin.products")}</Link> : null}
           <Link to="/admin/orders" className="underline">{t("admin.orders")}</Link>
-          <Link to="/admin/inventory" className="underline">{t("admin.inventory")}</Link>
+          {access?.permissions.inventory ? <Link to="/admin/inventory" className="underline">{t("admin.inventory")}</Link> : null}
           {manager ? <Link to="/admin/customers" className="underline">{t("admin.customers")}</Link> : null}
         </div>
       </div>

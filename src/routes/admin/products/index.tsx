@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { AdminError } from "@/components/admin/frame";
+import { AdminError, useDeskAccess } from "@/components/admin/frame";
 import { adminBulk, adminImport, adminProducts } from "@/lib/commerce/fns";
 import { money } from "@/lib/format";
 import { localize } from "@/lib/i18n/text";
@@ -14,6 +14,7 @@ export const Route = createFileRoute("/admin/products/")({
 
 function ProductsPage() {
   const { t, tx } = useT();
+  const seeStock = useDeskAccess()?.permissions.inventory ?? false;
   const [data, setData] = useState<Awaited<ReturnType<typeof adminProducts>> | null>(null);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
@@ -75,7 +76,7 @@ function ProductsPage() {
               <th className="p-3">{t("desk.product")}</th>
               <th className="p-3">{t("desk.status")}</th>
               <th className="p-3">{t("desk.price")}</th>
-              <th className="p-3">{t("desk.stock")}</th>
+              {seeStock ? <th className="p-3">{t("desk.stock")}</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -102,7 +103,7 @@ function ProductsPage() {
                 </td>
                 <td className="p-3">{t(product.status === "published" ? "desk.published" : product.status === "archived" ? "desk.archived" : "desk.draft")}</td>
                 <td className="p-3 tabular-nums">{money(product.priceCents)}</td>
-                <td className="p-3 tabular-nums">{product.inventoryQty}</td>
+                {seeStock ? <td className="p-3 tabular-nums">{product.inventoryQty}</td> : null}
               </tr>
             ))}
           </tbody>

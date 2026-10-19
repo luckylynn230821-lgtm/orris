@@ -20,10 +20,15 @@ test("only the owner can see cost and profit", () => {
   assert.equal(can("staff", { settings: ["update"] }), false);
 });
 
-test("staff can ship and count stock, not refund", () => {
+test("staff can ship, not refund or open inventory", () => {
   assert.equal(can("staff", { order: ["read"] }), true);
   assert.equal(can("staff", { order: ["fulfill"] }), true);
   assert.equal(can("staff", { order: ["refund"] }), false);
-  assert.equal(can("staff", { inventory: ["adjust"] }), true);
+  assert.equal(can("staff", { inventory: ["read"] }), false);
+  assert.equal(can("staff", { inventory: ["adjust"] }), false);
+  assert.equal(can("manager", { inventory: ["read"] }), false);
+  assert.equal(can("manager", { inventory: ["adjust"] }), false);
+  assert.equal(can("owner", { inventory: ["read"] }), true);
+  assert.equal(can("owner", { inventory: ["adjust"] }), true);
   assert.equal(can("manager", { order: ["refund"] }), true);
 });

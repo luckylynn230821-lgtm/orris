@@ -4,8 +4,8 @@ import { createAccessControl } from "better-auth/plugins/access";
  * Desk roles, using Better Auth's access-control helper
  * (github.com/better-auth/better-auth, plugins/access).
  *
- * Owner is the parent account and the only role that can see cost and profit.
- * A manager runs the desk. Staff can only ship and count stock.
+ * Owner is the parent account. Only the owner can see cost, profit, and inventory.
+ * A manager runs products, orders, customers and settings. Staff can only ship.
  */
 const statement = {
   order: ["read", "fulfill", "refund"],
@@ -32,13 +32,11 @@ export const roles = {
   manager: ac.newRole({
     order: ["read", "fulfill", "refund"],
     catalog: ["read", "update"],
-    inventory: ["read", "adjust"],
     customer: ["read"],
     settings: ["update"],
   }),
   staff: ac.newRole({
     order: ["read", "fulfill"],
-    inventory: ["read", "adjust"],
   }),
 } as const;
 

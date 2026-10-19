@@ -97,12 +97,15 @@ async function audit(userId: string, action: string, entity: string, entityId: s
 export async function adminCatalog(userId: string) {
   const session = await requireDesk(userId, { catalog: ["read"] });
   const seeCost = can(session.role, { money: ["read"] });
+  const seeStock = can(session.role, { inventory: ["read"] });
   const [products, categories] = await Promise.all([loadAllProducts(), loadCategories()]);
   return {
     products: products.map((product) => ({
       ...product,
+      inventoryQty: seeStock ? product.inventoryQty : 0,
       variants: product.variants.map((variant) => ({
         ...variant,
+        inventoryQty: seeStock ? variant.inventoryQty : 0,
         costCents: seeCost && "costCents" in variant ? num(variant.costCents) : null,
       })),
     })),
@@ -147,6 +150,7 @@ export async function saveProduct(
 ) {
   const session = await requireDesk(userId, { catalog: ["update"] });
   const seeCost = can(session.role, { money: ["read"] });
+  const seeStock = can(session.role, { inventory: ["adjust"] });
   const name = input.name.trim();
   const slug = slugify(input.slug || name);
   if (!name || !slug) throw userError("A product needs a name.");
@@ -193,6 +197,7 @@ export async function saveProduct(
         keep.add(variant.id);
         const previous = existing.find((row) => row.id === variant.id)!;
         const costCents = seeCost ? variant.costCents : num(previous.cost_cents);
+        const inventoryQty = seeStock ? variant.inventoryQty : num(previous.inventory_qty);
         await query(
           `update product_variants set sku = $2, title = $3, option1_name = $4, option1_value = $5,
              option2_name = $6, option2_value = $7, price_cents = $8, compare_at_cents = $9, cost_cents = $10,
@@ -209,12 +214,12 @@ export async function saveProduct(
             variant.priceCents,
             variant.compareAtCents ?? null,
             costCents,
-            variant.inventoryQty,
+            inventoryQty,
             index,
             productId,
           ],
         );
-        const delta = variant.inventoryQty - num(previous.inventory_qty);
+        const delta = inventoryQty - num(previous.inventory_qty);
         if (delta !== 0) {
           await query(
             `insert into inventory_movements (id, variant_id, qty_delta, reason, note) values ($1, $2, $3, 'adjustment', 'Edited on the product form')`,
@@ -241,13 +246,13 @@ export async function saveProduct(
             variant.priceCents,
             variant.compareAtCents ?? null,
             seeCost ? variant.costCents : 0,
-            variant.inventoryQty,
+            seeStock ? variant.inventoryQty : 0,
             index,
           ],
         );
         await query(
           `insert into inventory_movements (id, variant_id, qty_delta, reason, note) values ($1,$2,$3,'opening','New variant')`,
-          [crypto.randomUUID(), variantId, variant.inventoryQty],
+          [crypto.randomUUID(), variantId, seeStock ? variant.inventoryQty : 0],
         );
       }
     }

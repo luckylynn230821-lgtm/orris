@@ -35,6 +35,7 @@ function Editor() {
   const { id } = Route.useParams();
   const { t, tx } = useT();
   const seeCost = useDeskAccess()?.permissions.money ?? false;
+  const seeStock = useDeskAccess()?.permissions.inventory ?? false;
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
@@ -308,7 +309,7 @@ function Editor() {
             <Field label={t("desk.price")} value={variant.price} onChange={(event) => update(setVariants, index, { price: event.target.value })} />
             <Field label={t("desk.compareAt")} value={variant.compare} onChange={(event) => update(setVariants, index, { compare: event.target.value })} />
             {seeCost ? <Field label={t("desk.cost")} value={variant.cost} onChange={(event) => update(setVariants, index, { cost: event.target.value })} /> : null}
-            <Field label={t("desk.stock")} value={variant.inventory} onChange={(event) => update(setVariants, index, { inventory: event.target.value })} />
+            {seeStock ? <Field label={t("desk.stock")} value={variant.inventory} onChange={(event) => update(setVariants, index, { inventory: event.target.value })} /> : null}
             <Field label={t("desk.option")} value={variant.option1Name} onChange={(event) => update(setVariants, index, { option1Name: event.target.value })} placeholder={t("desk.sizeHint")} />
             <Field label={t("desk.optionValue")} value={variant.option1Value} onChange={(event) => update(setVariants, index, { option1Value: event.target.value })} />
           </div>
