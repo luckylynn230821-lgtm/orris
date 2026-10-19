@@ -12,7 +12,7 @@ export function LanguageSwitch({ className, tone = "ivory" }: { className?: stri
         value={locale}
         onChange={(event) => setLocale(event.target.value as (typeof LOCALES)[number]["id"])}
         className={cn(
-          "h-11 max-w-[9.5rem] bg-transparent pr-1 text-sm outline-none",
+          "h-9 max-w-full bg-transparent text-sm outline-none",
           tone === "ink" ? "text-ivory" : "text-ink",
         )}
       >

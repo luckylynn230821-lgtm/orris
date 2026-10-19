@@ -107,6 +107,8 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
             <Link to="/login" search={{ next: "account" }} className="block">{t("login.customerTitle")}</Link>
             <Link to="/orders" className="block">{t("nav.findOrder")}</Link>
             <Link to="/admin" className="block">{t("nav.merchant")}</Link>
+            <Link to="/privacy" className="block">{t("nav.privacy")}</Link>
+            <Link to="/refunds" className="block">{t("nav.refunds")}</Link>
             <LanguageSwitch />
             <a href={`mailto:${chrome?.supportEmail || "studio@mu.example"}`} className="block">{chrome?.supportEmail || "studio@mu.example"}</a>
           </div>

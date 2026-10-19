@@ -87,7 +87,7 @@ export function SignInButtons() {
  * gate-materialized — behind the gate the next request signs the viewer
  * straight back in, so a sign-out control there is a broken loop.
  */
-export function UserButton() {
+export function UserButton({ compact = false }: { compact?: boolean }) {
   const user = useCurrentUser();
   // Sign-out can take a moment (and can fail when deployed), so the control
   // shows it is working and cannot be fired twice.
@@ -100,29 +100,38 @@ export function UserButton() {
   if (!user) return null;
   const label = user.displayName ?? user.primaryEmail ?? "Account";
   return (
-    <div className="flex items-center gap-2">
-      {user.profileImageUrl ? (
-        <img
-          src={user.profileImageUrl}
-          alt=""
-          className="h-8 w-8 rounded-full object-cover"
-        />
-      ) : (
-        <span className="grid h-8 w-8 place-items-center rounded-full bg-black/10 text-sm font-medium dark:bg-white/20">
-          {label.charAt(0).toUpperCase()}
+    <div className={compact ? "min-w-0" : "flex items-center gap-2"}>
+      <div className={compact ? "flex min-w-0 items-center gap-2" : "contents"}>
+        {user.profileImageUrl ? (
+          <img src={user.profileImageUrl} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+        ) : (
+          <span
+            className={
+              compact
+                ? "grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/15 text-sm text-ivory"
+                : "grid h-8 w-8 shrink-0 place-items-center rounded-full bg-black/10 text-sm font-medium dark:bg-white/20"
+            }
+          >
+            {label.charAt(0).toUpperCase()}
+          </span>
+        )}
+        <span className={compact ? "truncate text-sm" : "text-sm font-medium"} title={label}>
+          {label}
         </span>
-      )}
-      <span className="text-sm font-medium">{label}</span>
+      </div>
       {authEnabled && !gateSession && (
         <button
           type="button"
           disabled={signingOut}
           onClick={() => {
             setSigningOut(true);
-            // Success navigates away; on failure re-enable so it can be retried.
             void signOut().catch(() => setSigningOut(false));
           }}
-          className="cursor-pointer text-sm underline-offset-4 opacity-70 hover:underline disabled:cursor-wait disabled:no-underline"
+          className={
+            compact
+              ? "mt-1 cursor-pointer text-xs text-ivory/70 underline-offset-4 hover:underline disabled:cursor-wait"
+              : "cursor-pointer text-sm underline-offset-4 opacity-70 hover:underline disabled:cursor-wait disabled:no-underline"
+          }
         >
           {signingOut ? "Signing out…" : "Sign out"}
         </button>

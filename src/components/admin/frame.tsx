@@ -123,12 +123,14 @@ export function AdminFrame({ children }: { children: ReactNode }) {
   return (
     <DeskContext.Provider value={access}>
       <div className="desk min-h-screen bg-stone text-ink md:grid md:grid-cols-[220px_1fr]">
-        <aside className="bg-ink text-ivory md:min-h-screen">
-          <div className="flex items-center justify-between px-4 py-5">
+        <aside className="z-20 min-w-0 overflow-hidden bg-ink text-ivory md:min-h-screen">
+          <div className="px-4 pt-5 pb-3">
             <Link to="/" className="font-display text-xl tracking-[-0.04em]">Desk</Link>
-            <div className="flex items-center gap-2">
-              <LanguageSwitch tone="ink" />
-              <UserButton />
+            <div className="mt-3 max-w-full">
+              <LanguageSwitch tone="ink" className="max-w-full" />
+            </div>
+            <div className="mt-3 min-w-0">
+              <UserButton compact />
             </div>
           </div>
           <p className="px-4 pb-3 text-xs tracking-[0.14em] text-ivory/50 uppercase">{t(roleKey)}</p>
