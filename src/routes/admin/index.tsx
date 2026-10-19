@@ -68,7 +68,7 @@ function MoneyOverview() {
       {data ? (
         <>
           <p className="mt-4 max-w-3xl text-xs leading-5 text-ash">
-            {data.definitions.net} {data.definitions.profit} {t("admin.shippingCollected", { amount: money(data.kpis.shippingCents) })} {t("admin.taxCollected", { amount: money(data.kpis.taxCents) })} {t("admin.notInNet")}
+            {t("desk.defNet")} {t("desk.defProfit")} {t("admin.shippingCollected", { amount: money(data.kpis.shippingCents) })} {t("admin.taxCollected", { amount: money(data.kpis.taxCents) })} {t("admin.notInNet")}
             {includeDemo ? t("admin.sampleOn") : t("admin.sampleOff")}
           </p>
           <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-5">

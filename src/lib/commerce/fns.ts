@@ -374,7 +374,7 @@ export const adminOrder = createServerFn({ method: "GET" })
 export const adminFulfill = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) =>
-    z.object({ id: z.string(), carrier: z.string().max(80), tracking: z.string().max(80) }).parse(input),
+    z.object({ id: z.string(), carrier: z.string().max(80), tracking: z.string().max(80), carrierId: z.string().optional() }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { fulfillOrder } = await import("./admin.server");
@@ -414,6 +414,46 @@ export const adminResolveService = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { resolveService } = await import("./admin.server");
     return guard(() => resolveService(context.userId, data));
+  });
+
+export const adminAccept = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => z.object({ id: z.string().min(1) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { acceptOrder } = await import("./admin.server");
+    return guard(() => acceptOrder(context.userId, data.id));
+  });
+
+export const adminCarriers = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const { listCarriers } = await import("./admin.server");
+    return guard(() => listCarriers(context.userId));
+  });
+
+export const adminSaveCarrier = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) =>
+    z.object({
+      id: z.string().min(1).optional(),
+      name: z.string().trim().min(1).max(80),
+      trackingUrl: z.string().trim().max(300),
+      costCents: z.number().int().min(0),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { saveCarrier } = await import("./admin.server");
+    return guard(() => saveCarrier(context.userId, data));
+  });
+
+export const adminBroadcast = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) =>
+    z.object({ subject: z.string().trim().min(2).max(140), body: z.string().trim().min(2).max(2000) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { broadcastCustomers } = await import("./admin.server");
+    return guard(() => broadcastCustomers(context.userId, data));
   });
 
 export const adminCustomers = createServerFn({ method: "GET" })

@@ -31,7 +31,7 @@ function AnalyticsPage() {
     <div>
       <h1 className="text-4xl">{t("admin.analyticsTitle")}</h1>
       <div className="mt-6"><RangeBar range={range} setRange={setRange} includeDemo={includeDemo} setIncludeDemo={setIncludeDemo} /></div>
-      {loading ? <p className="mt-6 text-sm text-ash">Loading…</p> : null}
+      {loading ? <p className="mt-6 text-sm text-ash">{t("desk.analyticsLoading")}</p> : null}
       {error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}
       {data ? (
         <>
@@ -41,22 +41,38 @@ function AnalyticsPage() {
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="var(--color-ash)" />
                 <YAxis tick={{ fontSize: 11 }} stroke="var(--color-ash)" tickFormatter={(value) => `${Math.round(Number(value) / 100)}`} />
                 <Tooltip formatter={(value) => money(Number(value))} />
-                <Bar dataKey="profitCents" name="Gross profit" fill="var(--color-brass)" />
-                <Bar dataKey="netCents" name="Net sales" fill="var(--color-ink)" />
+                <Bar dataKey="profitCents" name={t("desk.grossProfit")} fill="var(--color-brass)" />
+                <Bar dataKey="netCents" name={t("desk.netSales")} fill="var(--color-ink)" />
               </BarChart>
             </ResponsiveContainer>
           </div>
           <div className="mt-4 flex gap-2 text-sm">
             {(["net", "units", "profit", "margin"] as const).map((key) => (
-              <button key={key} className={sort === key ? "underline" : "text-ash"} onClick={() => setSort(key)}>{key}</button>
+              <button key={key} className={sort === key ? "underline" : "text-ash"} onClick={() => setSort(key)}>
+                {t(key === "net" ? "desk.sortNet" : key === "units" ? "desk.sortUnits" : key === "profit" ? "desk.sortProfit" : "desk.sortMargin")}
+              </button>
             ))}
           </div>
           <div className="mt-3 overflow-auto bg-paper">
             <table className="w-full min-w-[880px] text-left text-sm">
               <thead className="text-xs text-ash uppercase">
                 <tr>
-                  {["Product", "SKU", "Price", "Cost", "Units", "Net", "Profit", "Margin", "Stock", "Refund", "Conversion"].map((heading) => (
-                    <th key={heading} className="p-3">{heading}</th>
+                  {(
+                    [
+                      "desk.product",
+                      "desk.sku",
+                      "desk.price",
+                      "desk.cost",
+                      "desk.units",
+                      "desk.net",
+                      "desk.profit",
+                      "desk.margin",
+                      "desk.stock",
+                      "desk.refund",
+                      "desk.conversion",
+                    ] as const
+                  ).map((heading) => (
+                    <th key={heading} className="p-3">{t(heading)}</th>
                   ))}
                 </tr>
               </thead>
@@ -73,19 +89,19 @@ function AnalyticsPage() {
                     <td className="p-3">{pct(row.margin)}</td>
                     <td className="p-3 tabular-nums">{row.inventory}</td>
                     <td className="p-3">{pct(row.refundRate)}</td>
-                    <td className="p-3">{row.views ? pct(row.conversion) : "Insufficient data"}</td>
+                    <td className="p-3">{row.views ? pct(row.conversion) : t("desk.insufficient")}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <h2 className="mt-8 text-2xl">Purchase funnel</h2>
-          <p className="mt-2 text-xs text-ash">Views, adds and checkout starts are session-days. Purchases are paid orders. They are not the same unit, and the page says so.</p>
+          <h2 className="mt-8 text-2xl">{t("desk.funnel")}</h2>
+          <p className="mt-2 text-xs text-ash">{t("desk.funnelNote")}</p>
           <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Stat label="View sessions" value={String(data.funnel.views)} />
-            <Stat label="Add to bag" value={String(data.funnel.addToCart)} />
-            <Stat label="Checkout started" value={String(data.funnel.checkoutStarted)} />
-            <Stat label="Paid orders" value={String(data.funnel.purchases)} />
+            <Stat label={t("desk.viewSessions")} value={String(data.funnel.views)} />
+            <Stat label={t("desk.addToBag")} value={String(data.funnel.addToCart)} />
+            <Stat label={t("desk.checkoutStarted")} value={String(data.funnel.checkoutStarted)} />
+            <Stat label={t("desk.paidOrders")} value={String(data.funnel.purchases)} />
           </div>
         </>
       ) : null}

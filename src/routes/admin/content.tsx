@@ -12,7 +12,7 @@ function ContentPage() {
   return (
     <div>
       <h1 className="mb-2 text-4xl">{t("admin.contentTitle")}</h1>
-      <p className="mb-6 max-w-xl text-sm text-ash">The homepage reads these fields. The layout stays fixed. There is no drag-and-drop page builder.</p>
+      <p className="mb-6 max-w-xl text-sm text-ash">{t("desk.contentIntro")}</p>
       <SettingsForm part="content" />
     </div>
   );

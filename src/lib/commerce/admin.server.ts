@@ -7,6 +7,7 @@ import { faceFor } from "./customer.server";
 import { ensureSeeded } from "./seed.server";
 import { withTx } from "./tx.server";
 import { STAFF_CAP, can, deskPermissions, type DeskRole, type PermissionRequest } from "./access";
+import { deliverMail, trackingLink } from "./shipping";
 
 function asRole(role: string): DeskRole {
   if (role === "owner" || role === "administrator") return "owner";
@@ -524,44 +525,61 @@ export async function orderDetail(userId: string, id: string) {
     fulfillments: fulfillments.map((row) => ({
       carrier: String(row.carrier ?? ""),
       tracking: String(row.tracking ?? ""),
+      trackingUrl: String(row.tracking_url ?? ""),
+      logisticsCostCents: seeCost ? num(row.logistics_cost_cents) : null,
       status: String(row.status),
       at: iso(row.created_at),
     })),
   };
 }
 
-export async function fulfillOrder(userId: string, input: { id: string; carrier: string; tracking: string }) {
+export async function fulfillOrder(userId: string, input: { id: string; carrier: string; tracking: string; carrierId?: string }) {
   await requireDesk(userId, { order: ["fulfill"] });
+  const sql = await getSql();
+  const chosen = input.carrierId
+    ? (await sql<{ name: string; tracking_url: string; cost_cents: number }>`
+        select name, tracking_url, cost_cents from carriers where id = ${input.carrierId} and active = true
+      `)[0]
+    : undefined;
+  const carrier = chosen?.name || input.carrier.trim() || "Studio dispatch";
+  const tracking = input.tracking.trim();
+  const url = trackingLink(chosen?.tracking_url ?? "", tracking);
+  const cost = chosen ? num(chosen.cost_cents) : 0;
+  let email = "";
   await withTx(async (query) => {
-    const rows = await query<{ payment_status: string; fulfillment_status: string; number: string }>(
-      "select payment_status, fulfillment_status, number from orders where id = $1 for update",
+    const rows = await query<{ payment_status: string; fulfillment_status: string; email: string }>(
+      "select payment_status, fulfillment_status, email from orders where id = $1 for update",
       [input.id],
     );
     if (!rows[0]) throw userError("Order not found.");
-    if (!["paid", "partially_refunded"].includes(rows[0].payment_status)) {
-      throw userError("err.payFirst");
-    }
+    if (!["paid", "partially_refunded"].includes(rows[0].payment_status)) throw userError("err.payFirst");
     if (rows[0].fulfillment_status === "shipped" || rows[0].fulfillment_status === "fulfilled") {
       throw userError("err.alreadyShipped");
     }
-    const carrier = input.carrier.trim() || "Studio dispatch";
-    const tracking = input.tracking.trim();
+    email = rows[0].email;
+    await query(`update orders set fulfillment_status = 'shipped' where id = $1`, [input.id]);
     await query(
-      `update orders set fulfillment_status = 'shipped' where id = $1`,
-      [input.id],
-    );
-    await query(
-      `insert into fulfillments (id, order_id, carrier, tracking, status) values ($1, $2, $3, $4, 'shipped')`,
-      [crypto.randomUUID(), input.id, carrier, tracking],
+      `insert into fulfillments (id, order_id, carrier, tracking, status, carrier_id, tracking_url, logistics_cost_cents)
+       values ($1, $2, $3, $4, 'shipped', $5, $6, $7)`,
+      [crypto.randomUUID(), input.id, carrier, tracking, input.carrierId ?? null, url, cost],
     );
     await query(`insert into order_events (id, order_id, message) values ($1, $2, $3)`, [
       crypto.randomUUID(),
       input.id,
-      `event.shipped\n${JSON.stringify({ carrier, tracking: tracking || "—" })}`,
+      `event.shipped\n${JSON.stringify({ carrier, tracking: tracking || "—", url: url || "—" })}`,
     ]);
   });
-  await audit(userId, "fulfill", "order", input.id, { tracking: input.tracking });
-  return { ok: true };
+  await recordMail("order_shipped", email, input.id, "event.shipped", { carrier, tracking: tracking || "—", url: url || "—" });
+  await audit(userId, "fulfill", "order", input.id, { tracking, carrierId: input.carrierId ?? null });
+  return { ok: true, mail: deliverMail() };
+}
+
+async function recordMail(kind: string, email: string, orderId: string | null, subject: string, body: unknown) {
+  const sql = await getSql();
+  await sql`
+    insert into outbound_messages (id, kind, order_id, email, subject, body, status)
+    values (${crypto.randomUUID()}, ${kind}, ${orderId}, ${email}, ${subject}, ${JSON.stringify(body)}, 'recorded')
+  `;
 }
 
 export async function refundOrder(userId: string, input: { id: string; amountCents: number; reason: string; restock: boolean }) {
@@ -723,6 +741,8 @@ export async function loadSettings(userId: string) {
     ...settings,
     highMargin: seeCost ? settings.highMargin : null,
     lowMargin: seeCost ? settings.lowMargin : null,
+    vatRate: seeCost ? settings.vatRate : null,
+    importTaxRate: seeCost ? settings.importTaxRate : null,
     members: members.map((member) => ({
       userId: member.user_id,
       email: member.email,
@@ -757,6 +777,8 @@ export async function saveSettings(
     lowMarginBps: number;
     lowConversionBps: number;
     judgementDays: number;
+    vatBps: number;
+    importTaxBps: number;
     hero: Record<string, string>;
     benefits: { title: string; body: string }[];
     editorial: Record<string, string>;
@@ -770,6 +792,8 @@ export async function saveSettings(
   const seeCost = can(session.role, { money: ["read"] });
   const highMarginBps = seeCost ? input.highMarginBps : Math.round(current.highMargin * 10_000);
   const lowMarginBps = seeCost ? input.lowMarginBps : Math.round(current.lowMargin * 10_000);
+  const vatBps = seeCost ? input.vatBps : Math.round(current.vatRate * 10_000);
+  const importTaxBps = seeCost ? input.importTaxBps : Math.round(current.importTaxRate * 10_000);
   await sql`
     update store_settings set
       brand_name = ${input.brandName.trim()},
@@ -785,6 +809,8 @@ export async function saveSettings(
       min_views = ${input.minViews},
       high_margin_bps = ${highMarginBps},
       low_margin_bps = ${lowMarginBps},
+      vat_bps = ${vatBps},
+      import_tax_bps = ${importTaxBps},
       low_conversion_bps = ${input.lowConversionBps},
       judgement_days = ${input.judgementDays},
       hero = ${JSON.stringify(input.hero)}::jsonb,
@@ -915,4 +941,92 @@ export async function revokeSeat(userId: string, emailRaw: string) {
   await sql`delete from store_invites where email = ${email}`;
   await audit(userId, "revoke_seat", "member", email, { email });
   return listTeam(userId);
+}
+
+async function canFulfillOrEdit(userId: string) {
+  const session = await actor(userId);
+  if (!can(session.role, { order: ["fulfill"] }) && !can(session.role, { settings: ["update"] })) {
+    throw userError("err.forbidden");
+  }
+  return session;
+}
+
+export async function listCarriers(userId: string) {
+  const session = await canFulfillOrEdit(userId);
+  const seeCost = can(session.role, { money: ["read"] });
+  const sql = await getSql();
+  const rows = await sql<{ id: string; name: string; tracking_url: string; cost_cents: number; active: boolean }>`
+    select id, name, tracking_url, cost_cents, active from carriers order by created_at
+  `;
+  return {
+    connected: false as const,
+    carriers: rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      trackingUrl: row.tracking_url,
+      costCents: seeCost ? num(row.cost_cents) : null,
+      active: row.active,
+    })),
+  };
+}
+
+export async function saveCarrier(
+  userId: string,
+  input: { id?: string; name: string; trackingUrl: string; costCents: number },
+) {
+  const session = await requireDesk(userId, { settings: ["update"] });
+  const seeCost = can(session.role, { money: ["read"] });
+  const sql = await getSql();
+  const name = input.name.trim();
+  const trackingUrl = input.trackingUrl.trim();
+  if (input.id) {
+    if (seeCost) {
+      await sql`update carriers set name = ${name}, tracking_url = ${trackingUrl}, cost_cents = ${input.costCents} where id = ${input.id}`;
+    } else {
+      await sql`update carriers set name = ${name}, tracking_url = ${trackingUrl} where id = ${input.id}`;
+    }
+  } else {
+    await sql`
+      insert into carriers (id, name, tracking_url, cost_cents)
+      values (${crypto.randomUUID()}, ${name}, ${trackingUrl}, ${seeCost ? input.costCents : 0})
+    `;
+  }
+  await audit(userId, "save_carrier", "carrier", input.id ?? name, { name });
+  return listCarriers(userId);
+}
+
+export async function acceptOrder(userId: string, id: string) {
+  await requireDesk(userId, { order: ["fulfill"] });
+  const sql = await getSql();
+  const rows = await sql<{ email: string; payment_status: string; fulfillment_status: string }>`
+    select email, payment_status, fulfillment_status from orders where id = ${id}
+  `;
+  const order = rows[0];
+  if (!order) throw userError("err.orderMissing");
+  if (order.payment_status !== "paid" && order.payment_status !== "partially_refunded") throw userError("err.payFirst");
+  if (order.fulfillment_status === "shipped" || order.fulfillment_status === "fulfilled") throw userError("err.alreadyShipped");
+  const prior = await sql<{ id: string }>`
+    select id from order_events where order_id = ${id} and message like 'event.accepted%' limit 1
+  `;
+  if (prior[0]) return { ok: true, already: true as const, mail: deliverMail() };
+  await sql`insert into order_events (id, order_id, message) values (${crypto.randomUUID()}, ${id}, ${"event.accepted"})`;
+  await recordMail("order_accepted", order.email, id, "event.accepted", {});
+  await audit(userId, "accept_order", "order", id, {});
+  return { ok: true, mail: deliverMail() };
+}
+
+export async function broadcastCustomers(userId: string, input: { subject: string; body: string }) {
+  await requireDesk(userId, { customer: ["read"] });
+  const subject = input.subject.trim();
+  const body = input.body.trim();
+  if (subject.length < 2 || body.length < 2) throw userError("err.email");
+  const sql = await getSql();
+  const people = await sql<{ email: string }>`
+    select distinct email from customers where is_demo = false and email not like '%@example.com'
+  `;
+  for (const person of people) {
+    await recordMail("broadcast", person.email, null, subject, { body });
+  }
+  await audit(userId, "broadcast", "customer", "all", { count: people.length });
+  return { count: people.length, mail: deliverMail() };
 }

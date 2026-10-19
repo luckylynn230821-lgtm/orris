@@ -59,6 +59,8 @@ export async function readSettings(): Promise<PublicSettings & {
   lowMargin: number;
   lowConversion: number;
   judgementDays: number;
+  vatRate: number;
+  importTaxRate: number;
 }> {
   const sql = await db();
   const rows = await sql<Record<string, unknown>>`select * from store_settings where id = 1`;
@@ -93,6 +95,8 @@ export async function readSettings(): Promise<PublicSettings & {
     lowMargin: num(row.low_margin_bps) / 10_000,
     lowConversion: num(row.low_conversion_bps) / 10_000,
     judgementDays: num(row.judgement_days),
+    vatRate: num(row.vat_bps) / 10_000,
+    importTaxRate: num(row.import_tax_bps) / 10_000,
   };
 }
 

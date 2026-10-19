@@ -9,6 +9,7 @@ import {
   Settings,
   ShoppingBag,
   Sparkles,
+  Truck,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -35,6 +36,7 @@ const NAV = [
   { to: "/admin/products", label: "admin.products", icon: Package, permission: "catalog" },
   { to: "/admin/inventory", label: "admin.inventory", icon: Boxes, permission: "inventory" },
   { to: "/admin/orders", label: "admin.orders", icon: ShoppingBag, permission: "orders" },
+  { to: "/admin/logistics", label: "desk.logistics", icon: Truck, permission: "fulfill" },
   { to: "/admin/customers", label: "admin.customers", icon: Users, permission: "customers" },
   { to: "/admin/analytics", label: "admin.analytics", icon: BarChart3, permission: "money" },
   { to: "/admin/intelligence", label: "admin.intelligence", icon: Lightbulb, permission: "money" },
@@ -48,6 +50,7 @@ const GUARDS: { prefix: string; permission: keyof Desk["permissions"] }[] = [
   { prefix: "/admin/products", permission: "catalog" },
   { prefix: "/admin/inventory", permission: "inventory" },
   { prefix: "/admin/orders", permission: "orders" },
+  { prefix: "/admin/logistics", permission: "fulfill" },
   { prefix: "/admin/customers", permission: "customers" },
   { prefix: "/admin/analytics", permission: "money" },
   { prefix: "/admin/intelligence", permission: "money" },

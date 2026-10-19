@@ -378,13 +378,14 @@ export function diagnose(items: InsightInput[], thresholds: Thresholds, windowDa
         item.units > 0 ? item.inventory / (item.units / Math.max(windowDays, 1)) : null;
       const youngAndQuiet =
         item.ageDays < thresholds.judgementDays && item.units < 2 && item.views < thresholds.minViews;
+      const note = (key: string, vars: Record<string, string | number>) => `${key}\n${JSON.stringify(vars)}`;
 
       if (youngAndQuiet) {
         return {
           ...base(item, conversion, daysCover),
           flags: ["insufficient"],
           reasons: [
-            `Published ${item.ageDays} days ago with ${item.views} view sessions and ${item.units} units sold. That is not enough history to call the product weak or strong.`,
+            note("insight.insufficient", { days: item.ageDays, views: item.views, units: item.units }),
           ],
         };
       }
@@ -394,15 +395,15 @@ export function diagnose(items: InsightInput[], thresholds: Thresholds, windowDa
 
       if (bestIds.has(item.productId)) {
         flags.push("best_seller");
-        reasons.push(
-          `${item.units} net units in this window, among the three highest unit sellers with at least 5 units.`,
-        );
+        reasons.push(note("insight.bestUnits", { units: item.units }));
       }
       if (item.margin !== null && item.units >= 2 && item.netCents > 0 && item.margin >= thresholds.highMargin) {
         flags.push("high_margin");
-        reasons.push(
-          `Gross margin is ${(item.margin * 100).toFixed(1)}%, above the ${(thresholds.highMargin * 100).toFixed(0)}% high-margin line. Net sales ${item.netCents} cents, cost already removed.`,
-        );
+        reasons.push(note("insight.highMargin", {
+          margin: (item.margin * 100).toFixed(1),
+          line: (thresholds.highMargin * 100).toFixed(0),
+          net: item.netCents,
+        }));
       }
       if (
         item.margin !== null &&
@@ -411,9 +412,10 @@ export function diagnose(items: InsightInput[], thresholds: Thresholds, windowDa
         item.margin < thresholds.lowMargin
       ) {
         flags.push("low_margin");
-        reasons.push(
-          `Gross margin is ${(item.margin * 100).toFixed(1)}%, under the ${(thresholds.lowMargin * 100).toFixed(0)}% low-margin line. Check cost and discount before spending more to acquire demand.`,
-        );
+        reasons.push(note("insight.lowMargin", {
+          margin: (item.margin * 100).toFixed(1),
+          line: (thresholds.lowMargin * 100).toFixed(0),
+        }));
       }
       if (
         item.refundRate !== null &&
@@ -421,9 +423,7 @@ export function diagnose(items: InsightInput[], thresholds: Thresholds, windowDa
         item.units >= 3
       ) {
         flags.push("high_refund");
-        reasons.push(
-          `Refunds are ${(item.refundRate * 100).toFixed(1)}% of this product's gross sales in the window.`,
-        );
+        reasons.push(note("insight.highRefund", { rate: (item.refundRate * 100).toFixed(1) }));
       }
       if (
         daysCover !== null &&
@@ -431,9 +431,13 @@ export function diagnose(items: InsightInput[], thresholds: Thresholds, windowDa
         daysCover < thresholds.replenishCoverDays
       ) {
         flags.push("replenishment");
-        reasons.push(
-          `About ${daysCover.toFixed(0)} days of cover at the current pace (${item.units} units / ${windowDays} days, ${item.inventory} on hand). The replenishment line is ${thresholds.replenishCoverDays} days. This does not create a purchase order.`,
-        );
+        reasons.push(note("insight.replenish", {
+          days: daysCover.toFixed(0),
+          units: item.units,
+          window: windowDays,
+          stock: item.inventory,
+          line: thresholds.replenishCoverDays,
+        }));
       }
       const slow =
         (item.units === 0 && item.inventory >= thresholds.lowStock && item.ageDays >= thresholds.judgementDays) ||
@@ -442,8 +446,12 @@ export function diagnose(items: InsightInput[], thresholds: Thresholds, windowDa
         flags.push("slow_moving");
         reasons.push(
           item.units === 0
-            ? `No units sold in this window and ${item.inventory} remain on hand. Treat this as slow stock, not as proof the product can never sell.`
-            : `Cover is about ${daysCover?.toFixed(0)} days, past the ${thresholds.slowCoverDays}-day slow-stock line, with ${item.inventory} on hand.`,
+            ? note("insight.slowNone", { stock: item.inventory })
+            : note("insight.slowCover", {
+                days: daysCover?.toFixed(0) ?? "",
+                line: thresholds.slowCoverDays,
+                stock: item.inventory,
+              }),
         );
       }
       if (
@@ -452,9 +460,12 @@ export function diagnose(items: InsightInput[], thresholds: Thresholds, windowDa
         conversion < thresholds.lowConversion
       ) {
         flags.push("high_interest_low_conversion");
-        reasons.push(
-          `${item.views} view sessions and ${item.purchases} purchase sessions (${(conversion * 100).toFixed(1)}% ). The low-conversion line is ${(thresholds.lowConversion * 100).toFixed(1)}%. Look at price, photographs and the description before changing the product itself.`,
-        );
+        reasons.push(note("insight.lowConversion", {
+          views: item.views,
+          purchases: item.purchases,
+          rate: (conversion * 100).toFixed(1),
+          line: (thresholds.lowConversion * 100).toFixed(1),
+        }));
       }
       if (
         item.ageDays >= thresholds.judgementDays &&
@@ -464,13 +475,11 @@ export function diagnose(items: InsightInput[], thresholds: Thresholds, windowDa
         (conversion === null || conversion < thresholds.lowConversion)
       ) {
         flags.push("underperforming");
-        reasons.push(
-          `On sale for ${item.ageDays} days with ${item.views} view sessions and only ${item.units} net units. Exposure is enough to compare it with the rest of the range.`,
-        );
+        reasons.push(note("insight.underperforming", { days: item.ageDays, views: item.views, units: item.units }));
       }
       if (flags.length === 0) {
         flags.push("steady");
-        reasons.push("No rule fired. Sales, margin, cover and conversion all sit inside the current thresholds.");
+        reasons.push(note("insight.steady", {}));
       }
       return { ...base(item, conversion, daysCover), flags, reasons };
     })

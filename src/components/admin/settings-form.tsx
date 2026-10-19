@@ -3,15 +3,34 @@ import { toast } from "sonner";
 import { Button, Field } from "@/components/ui";
 import { adminSaveSettings, adminSettings } from "@/lib/commerce/fns";
 import { centsToInput, dollarsToCents } from "@/lib/format";
+import { useT } from "@/lib/i18n/provider";
+import type { MessageKey } from "@/lib/i18n/translate";
+
+const AUDIT: Record<string, MessageKey> = {
+  save_product: "desk.actSaveProduct",
+  bulk_products: "desk.actBulk",
+  adjust_stock: "desk.actStock",
+  fulfill: "desk.actFulfill",
+  refund: "desk.actRefund",
+  cancel: "desk.actCancel",
+  save_settings: "desk.actSettings",
+  grant_seat: "desk.actGrant",
+  revoke_seat: "desk.actRevoke",
+  accept_order: "desk.actAccept",
+  broadcast: "desk.actBroadcast",
+  accept_invite: "desk.actInvite",
+  save_carrier: "desk.actCarrier",
+};
 
 export function SettingsForm({ part }: { part: "content" | "shop" }) {
+  const { t } = useT();
   const [raw, setRaw] = useState<Awaited<ReturnType<typeof adminSettings>> | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
     void adminSettings().then(setRaw).catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed"));
   }, []);
   if (error) return <p className="text-sm text-danger">{error}</p>;
-  if (!raw) return <p className="text-sm text-ash">Loading settings…</p>;
+  if (!raw) return <p className="text-sm text-ash">{t("admin.loading")}</p>;
   return (
     <form
       className="max-w-2xl space-y-4"
@@ -36,6 +55,8 @@ export function SettingsForm({ part }: { part: "content" | "shop" }) {
             lowMarginBps: Math.round(Number(text("lowMargin", String((raw.lowMargin ?? 0) * 100))) * 100),
             lowConversionBps: Math.round(Number(text("lowConv", String(raw.lowConversion * 100))) * 100),
             judgementDays: Number(text("judgement", String(raw.judgementDays))),
+            vatBps: Math.round(Number(text("vat", String((raw.vatRate ?? 0) * 100))) * 100),
+            importTaxBps: Math.round(Number(text("importTax", String((raw.importTaxRate ?? 0) * 100))) * 100),
             hero: {
               eyebrow: text("eyebrow", raw.hero.eyebrow),
               title: text("heroTitle", raw.hero.title),
@@ -64,58 +85,64 @@ export function SettingsForm({ part }: { part: "content" | "shop" }) {
     >
       {part === "content" ? (
         <>
-          <Field label="Announcement" name="announcement" defaultValue={raw.announcement} />
-          <Field label="Hero eyebrow" name="eyebrow" defaultValue={raw.hero.eyebrow} />
-          <Field label="Hero title" name="heroTitle" defaultValue={raw.hero.title} />
-          <Field label="Hero subtitle" name="subtitle" defaultValue={raw.hero.subtitle} />
-          <Field label="Hero button" name="cta" defaultValue={raw.hero.ctaLabel} />
-          <Field label="Editorial eyebrow" name="eEye" defaultValue={raw.editorial.eyebrow} />
-          <Field label="Editorial title" name="eTitle" defaultValue={raw.editorial.title} />
+          <Field label={t("desk.announcement")} name="announcement" defaultValue={raw.announcement} />
+          <Field label={t("desk.heroEyebrow")} name="eyebrow" defaultValue={raw.hero.eyebrow} />
+          <Field label={t("desk.heroTitle")} name="heroTitle" defaultValue={raw.hero.title} />
+          <Field label={t("desk.heroSubtitle")} name="subtitle" defaultValue={raw.hero.subtitle} />
+          <Field label={t("desk.heroButton")} name="cta" defaultValue={raw.hero.ctaLabel} />
+          <Field label={t("desk.editorialEyebrow")} name="eEye" defaultValue={raw.editorial.eyebrow} />
+          <Field label={t("desk.editorialTitle")} name="eTitle" defaultValue={raw.editorial.title} />
           <label className="block text-sm">
-            <span className="mb-1.5 block text-xs tracking-[0.14em] text-ash uppercase">Editorial</span>
+            <span className="mb-1.5 block text-xs tracking-[0.14em] text-ash uppercase">{t("desk.editorial")}</span>
             <textarea name="eBody" defaultValue={raw.editorial.body} className="h-28 w-full border border-line bg-paper p-3" />
           </label>
           {raw.benefits.map((benefit, index) => (
             <div key={index} className="grid gap-3">
-              <Field label={`Benefit ${index + 1}`} name={`b${index}t`} defaultValue={benefit.title} />
-              <Field label="Detail" name={`b${index}b`} defaultValue={benefit.body} />
+              <Field label={t("desk.benefit", { n: index + 1 })} name={`b${index}t`} defaultValue={benefit.title} />
+              <Field label={t("desk.detail")} name={`b${index}b`} defaultValue={benefit.body} />
             </div>
           ))}
-          <Field label="Footer line" name="footer" defaultValue={raw.footerBlurb} />
+          <Field label={t("desk.footerLine")} name="footer" defaultValue={raw.footerBlurb} />
         </>
       ) : (
         <>
-          <Field label="House name" name="brandName" defaultValue={raw.brandName} />
-          <Field label="Tagline" name="tagline" defaultValue={raw.tagline} />
-          <Field label="Support email" name="supportEmail" defaultValue={raw.supportEmail} />
-          <Field label="Standard shipping $" name="shipping" defaultValue={centsToInput(raw.shippingFlatCents)} />
-          <Field label="Express shipping $" name="express" defaultValue={centsToInput(raw.expressShippingCents)} />
-          <Field label="Free shipping from $" name="threshold" defaultValue={centsToInput(raw.freeShippingThresholdCents)} />
-          <Field label="Low stock at" name="lowStock" defaultValue={String(raw.lowStock)} />
-          <Field label="Slow cover, days" name="slow" defaultValue={String(raw.slowCoverDays)} />
-          <Field label="Reorder under, days" name="cover" defaultValue={String(raw.replenishCoverDays)} />
-          <Field label="Minimum views before a conversion judgement" name="views" defaultValue={String(raw.minViews)} />
+          <Field label={t("desk.houseName")} name="brandName" defaultValue={raw.brandName} />
+          <Field label={t("desk.tagline")} name="tagline" defaultValue={raw.tagline} />
+          <Field label={t("desk.supportEmail")} name="supportEmail" defaultValue={raw.supportEmail} />
+          <Field label={t("desk.standardShip")} name="shipping" defaultValue={centsToInput(raw.shippingFlatCents)} />
+          <Field label={t("desk.expressShip")} name="express" defaultValue={centsToInput(raw.expressShippingCents)} />
+          <Field label={t("desk.freeFrom")} name="threshold" defaultValue={centsToInput(raw.freeShippingThresholdCents)} />
+          <Field label={t("desk.lowStock")} name="lowStock" defaultValue={String(raw.lowStock)} />
+          <Field label={t("desk.slowCover")} name="slow" defaultValue={String(raw.slowCoverDays)} />
+          <Field label={t("desk.reorder")} name="cover" defaultValue={String(raw.replenishCoverDays)} />
+          <Field label={t("desk.minViews")} name="views" defaultValue={String(raw.minViews)} />
           {raw.highMargin !== null && raw.lowMargin !== null ? (
             <>
-              <Field label="High margin %" name="highMargin" defaultValue={String(Math.round(raw.highMargin * 100))} />
-              <Field label="Low margin %" name="lowMargin" defaultValue={String(Math.round(raw.lowMargin * 100))} />
+              <Field label={t("desk.highMargin")} name="highMargin" defaultValue={String(Math.round(raw.highMargin * 100))} />
+              <Field label={t("desk.lowMargin")} name="lowMargin" defaultValue={String(Math.round(raw.lowMargin * 100))} />
             </>
           ) : null}
-          <Field label="Low conversion %" name="lowConv" defaultValue={String(raw.lowConversion * 100)} />
-          <Field label="Days before judging a new piece" name="judgement" defaultValue={String(raw.judgementDays)} />
-          <p className="text-sm text-ash">Payments: demonstration checkout only. No card processor is configured, and the shop does not simulate a successful card charge.</p>
-          <p className="text-sm">Newsletter addresses saved: {raw.subscribers}</p>
-          <h2 className="text-2xl">Administrators</h2>
+          {raw.vatRate !== null && raw.importTaxRate !== null ? (
+            <>
+              <Field label={t("desk.vatRate")} name="vat" defaultValue={String(Math.round(raw.vatRate * 100))} />
+              <Field label={t("desk.importRate")} name="importTax" defaultValue={String(Math.round(raw.importTaxRate * 100))} />
+            </>
+          ) : null}
+          <Field label={t("desk.lowConv")} name="lowConv" defaultValue={String(raw.lowConversion * 100)} />
+          <Field label={t("desk.judgementDays")} name="judgement" defaultValue={String(raw.judgementDays)} />
+          <p className="text-sm text-ash">{t("desk.paymentsNote")}</p>
+          <p className="text-sm">{t("desk.subscribers", { count: raw.subscribers })}</p>
+          <h2 className="text-2xl">{t("desk.administrators")}</h2>
           <ul className="text-sm">
-            {raw.members.map((member) => <li key={member.userId}>{member.name || "Administrator"} · {member.email}</li>)}
+            {raw.members.map((member) => <li key={member.userId}>{member.name ? `${member.name} · ${member.email}` : member.email}</li>)}
           </ul>
-          <h2 className="text-2xl">Recent audit</h2>
+          <h2 className="text-2xl">{t("desk.recentAudit")}</h2>
           <ul className="text-xs text-ash">
-            {raw.audit.map((row, index) => <li key={index}>{row.at.slice(0, 16)} · {row.action} · {row.entity}</li>)}
+            {raw.audit.map((row, index) => <li key={index}>{row.at.slice(0, 16)} · {AUDIT[row.action] ? t(AUDIT[row.action]) : row.action} · {row.entity}</li>)}
           </ul>
         </>
       )}
-      <Button type="submit">Save</Button>
+      <Button type="submit">{t("desk.save")}</Button>
     </form>
   );
 }
