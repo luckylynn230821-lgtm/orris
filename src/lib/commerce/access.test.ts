@@ -8,10 +8,12 @@ test("the owner is the only role that can appoint people", () => {
   assert.equal(can("staff", { team: ["manage"] }), false);
 });
 
-test("a manager sees the books and a staff account does not", () => {
-  assert.equal(can("manager", { money: ["read"] }), true);
+test("only the owner can see cost and profit", () => {
+  assert.equal(can("owner", { money: ["read"] }), true);
+  assert.equal(can("manager", { money: ["read"] }), false);
   assert.equal(can("manager", { customer: ["read"] }), true);
   assert.equal(can("manager", { settings: ["update"] }), true);
+  assert.equal(can("manager", { catalog: ["update"] }), true);
   assert.equal(can("staff", { money: ["read"] }), false);
   assert.equal(can("staff", { customer: ["read"] }), false);
   assert.equal(can("staff", { catalog: ["read"] }), false);

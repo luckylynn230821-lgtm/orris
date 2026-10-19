@@ -23,27 +23,27 @@ function InventoryPage() {
     <div>
       <h1 className="text-4xl">{t("admin.inventoryTitle")}</h1>
       <p className="mt-2 max-w-2xl text-sm text-ash">
-        On-hand units and the cost value of that stock. Sample orders do not replay through this ledger. The opening balance is today's count. Sales, refunds and edits append after that.
+        On-hand units{data?.canSeeCost ? " and the cost value of that stock" : ""}. Sample orders do not replay through this ledger. The opening balance is today's count. Sales, refunds and edits append after that.
       </p>
       {error ? <div className="mt-4"><AdminError message={error} /></div> : null}
       {data ? (
         <>
           <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
             <Stat label="Units" value={String(data.summary.units)} />
-            <Stat label="Cost value" value={data.canSeeCost && data.summary.valueCents !== null ? money(data.summary.valueCents) : "—"} />
+            {data.canSeeCost && data.summary.valueCents !== null ? <Stat label="Cost value" value={money(data.summary.valueCents)} /> : null}
             <Stat label="Low" value={String(data.summary.low)} />
             <Stat label="Out" value={String(data.summary.out)} />
           </div>
           <div className="mt-6 overflow-auto bg-paper">
             <table className="w-full min-w-[680px] text-left text-sm">
-              <thead className="text-xs text-ash uppercase"><tr><th className="p-3">Piece</th><th className="p-3">SKU</th><th className="p-3">On hand</th><th className="p-3">Value</th><th className="p-3">Adjust</th></tr></thead>
+              <thead className="text-xs text-ash uppercase"><tr><th className="p-3">Piece</th><th className="p-3">SKU</th><th className="p-3">On hand</th>{data.canSeeCost ? <th className="p-3">Value</th> : null}<th className="p-3">Adjust</th></tr></thead>
               <tbody>
                 {data.variants.map((row) => (
                   <tr key={row.id} className="border-t border-line">
                     <td className="p-3">{row.productName} · {row.title}{row.out ? " · out" : row.low ? " · low" : ""}</td>
                     <td className="p-3">{row.sku}</td>
                     <td className="p-3 tabular-nums">{row.qty}</td>
-                    <td className="p-3 tabular-nums">{row.valueCents === null ? "—" : money(row.valueCents)}</td>
+                    {data.canSeeCost ? <td className="p-3 tabular-nums">{row.valueCents === null ? "—" : money(row.valueCents)}</td> : null}
                     <td className="p-3">
                       {data.canAdjust ? (
                       <button className="underline" onClick={() => {

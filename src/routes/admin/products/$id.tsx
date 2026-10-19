@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { AdminError } from "@/components/admin/frame";
+import { AdminError, useDeskAccess } from "@/components/admin/frame";
 import { Button, Field } from "@/components/ui";
 import { adminGetProduct, adminProducts, adminSaveImage, adminSaveProduct, adminUpdateImage } from "@/lib/commerce/fns";
 import { centsToInput, dollarsToCents } from "@/lib/format";
@@ -33,6 +33,7 @@ function blankVariant(): VariantDraft {
 function Editor() {
   const { id } = Route.useParams();
   const { t } = useT();
+  const seeCost = useDeskAccess()?.permissions.money ?? false;
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
@@ -173,7 +174,7 @@ function Editor() {
             <Field label="Title" value={variant.title} onChange={(event) => update(setVariants, index, { title: event.target.value })} />
             <Field label="Price" value={variant.price} onChange={(event) => update(setVariants, index, { price: event.target.value })} />
             <Field label="Compare-at" value={variant.compare} onChange={(event) => update(setVariants, index, { compare: event.target.value })} />
-            <Field label="Cost" value={variant.cost} onChange={(event) => update(setVariants, index, { cost: event.target.value })} />
+            {seeCost ? <Field label="Cost" value={variant.cost} onChange={(event) => update(setVariants, index, { cost: event.target.value })} /> : null}
             <Field label="Stock" value={variant.inventory} onChange={(event) => update(setVariants, index, { inventory: event.target.value })} />
             <Field label="Option" value={variant.option1Name} onChange={(event) => update(setVariants, index, { option1Name: event.target.value })} placeholder="Size" />
             <Field label="Value" value={variant.option1Value} onChange={(event) => update(setVariants, index, { option1Value: event.target.value })} />

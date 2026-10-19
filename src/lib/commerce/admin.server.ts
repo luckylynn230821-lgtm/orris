@@ -94,14 +94,15 @@ async function audit(userId: string, action: string, entity: string, entityId: s
 }
 
 export async function adminCatalog(userId: string) {
-  await requireDesk(userId, { catalog: ["read"] });
+  const session = await requireDesk(userId, { catalog: ["read"] });
+  const seeCost = can(session.role, { money: ["read"] });
   const [products, categories] = await Promise.all([loadAllProducts(), loadCategories()]);
   return {
     products: products.map((product) => ({
       ...product,
       variants: product.variants.map((variant) => ({
         ...variant,
-        costCents: "costCents" in variant ? num(variant.costCents) : 0,
+        costCents: seeCost && "costCents" in variant ? num(variant.costCents) : null,
       })),
     })),
     categories,
@@ -143,7 +144,8 @@ export async function saveProduct(
     variants: VariantInput[];
   },
 ) {
-  await requireDesk(userId, { catalog: ["update"] });
+  const session = await requireDesk(userId, { catalog: ["update"] });
+  const seeCost = can(session.role, { money: ["read"] });
   const name = input.name.trim();
   const slug = slugify(input.slug || name);
   if (!name || !slug) throw userError("A product needs a name.");
@@ -178,8 +180,8 @@ export async function saveProduct(
         [productId, name, slug, input.description.trim(), input.story.trim(), input.categoryId, input.status, JSON.stringify(input.tags), input.seoTitle.trim(), input.seoDescription.trim()],
       );
     }
-    const existing = await query<{ id: string; inventory_qty: number; sku: string }>(
-      "select id, inventory_qty, sku from product_variants where product_id = $1",
+    const existing = await query<{ id: string; inventory_qty: number; sku: string; cost_cents: number }>(
+      "select id, inventory_qty, sku, cost_cents from product_variants where product_id = $1",
       [productId],
     );
     const keep = new Set<string>();
@@ -189,6 +191,7 @@ export async function saveProduct(
       if (variant.id && existing.some((row) => row.id === variant.id)) {
         keep.add(variant.id);
         const previous = existing.find((row) => row.id === variant.id)!;
+        const costCents = seeCost ? variant.costCents : num(previous.cost_cents);
         await query(
           `update product_variants set sku = $2, title = $3, option1_name = $4, option1_value = $5,
              option2_name = $6, option2_value = $7, price_cents = $8, compare_at_cents = $9, cost_cents = $10,
@@ -204,7 +207,7 @@ export async function saveProduct(
             variant.option2Value || null,
             variant.priceCents,
             variant.compareAtCents ?? null,
-            variant.costCents,
+            costCents,
             variant.inventoryQty,
             index,
             productId,
@@ -236,7 +239,7 @@ export async function saveProduct(
             variant.option2Value || null,
             variant.priceCents,
             variant.compareAtCents ?? null,
-            variant.costCents,
+            seeCost ? variant.costCents : 0,
             variant.inventoryQty,
             index,
           ],
@@ -465,7 +468,8 @@ export async function listOrders(userId: string, q: string) {
 }
 
 export async function orderDetail(userId: string, id: string) {
-  await requireDesk(userId, { order: ["read"] });
+  const session = await requireDesk(userId, { order: ["read"] });
+  const seeCost = can(session.role, { money: ["read"] });
   const sql = await getSql();
   const orders = await sql<Record<string, unknown>>`select * from orders where id = ${id} or number = ${id} limit 1`;
   const order = orders[0];
@@ -508,7 +512,7 @@ export async function orderDetail(userId: string, id: string) {
       qty: num(item.qty),
       refundedQty: num(item.refunded_qty),
       unitPriceCents: num(item.unit_price_cents),
-      unitCostCents: num(item.unit_cost_cents),
+      unitCostCents: seeCost ? num(item.unit_cost_cents) : null,
       variantId: item.variant_id ? String(item.variant_id) : null,
     })),
     refunds: refunds.map((refund) => ({
@@ -704,7 +708,8 @@ export async function listCustomers(userId: string) {
 }
 
 export async function loadSettings(userId: string) {
-  await requireDesk(userId, { settings: ["update"] });
+  const session = await requireDesk(userId, { settings: ["update"] });
+  const seeCost = can(session.role, { money: ["read"] });
   const settings = await readSettings();
   const sql = await getSql();
   const members = await sql<{ user_id: string; email: string | null; name: string | null; created_at: unknown }>`
@@ -716,6 +721,8 @@ export async function loadSettings(userId: string) {
   const subscribers = await sql<{ n: number }>`select count(*)::int as n from newsletter_subscribers`;
   return {
     ...settings,
+    highMargin: seeCost ? settings.highMargin : null,
+    lowMargin: seeCost ? settings.lowMargin : null,
     members: members.map((member) => ({
       userId: member.user_id,
       email: member.email,
@@ -757,8 +764,12 @@ export async function saveSettings(
     socials: { label: string; href: string }[];
   },
 ) {
-  await requireDesk(userId, { settings: ["update"] });
+  const session = await requireDesk(userId, { settings: ["update"] });
   const sql = await getSql();
+  const current = await readSettings();
+  const seeCost = can(session.role, { money: ["read"] });
+  const highMarginBps = seeCost ? input.highMarginBps : Math.round(current.highMargin * 10_000);
+  const lowMarginBps = seeCost ? input.lowMarginBps : Math.round(current.lowMargin * 10_000);
   await sql`
     update store_settings set
       brand_name = ${input.brandName.trim()},
@@ -772,8 +783,8 @@ export async function saveSettings(
       slow_cover_days = ${input.slowCoverDays},
       replenish_cover_days = ${input.replenishCoverDays},
       min_views = ${input.minViews},
-      high_margin_bps = ${input.highMarginBps},
-      low_margin_bps = ${input.lowMarginBps},
+      high_margin_bps = ${highMarginBps},
+      low_margin_bps = ${lowMarginBps},
       low_conversion_bps = ${input.lowConversionBps},
       judgement_days = ${input.judgementDays},
       hero = ${JSON.stringify(input.hero)}::jsonb,

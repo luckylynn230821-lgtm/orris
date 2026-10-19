@@ -16,13 +16,16 @@ function Overview() {
   const access = useDeskAccess();
   const { t } = useT();
   if (!access?.permissions.money) {
+    const manager = access?.permissions.catalog;
     return (
       <div>
-        <h1 className="text-4xl">{t("admin.staffHome")}</h1>
-        <p className="mt-3 max-w-xl text-sm leading-6 text-ash">{t("admin.staffHomeBody")}</p>
+        <h1 className="text-4xl">{manager ? t("admin.managerHome") : t("admin.staffHome")}</h1>
+        <p className="mt-3 max-w-xl text-sm leading-6 text-ash">{manager ? t("admin.managerHomeBody") : t("admin.staffHomeBody")}</p>
         <div className="mt-6 flex gap-4 text-sm">
+          {manager ? <Link to="/admin/products" className="underline">{t("admin.products")}</Link> : null}
           <Link to="/admin/orders" className="underline">{t("admin.orders")}</Link>
           <Link to="/admin/inventory" className="underline">{t("admin.inventory")}</Link>
+          {manager ? <Link to="/admin/customers" className="underline">{t("admin.customers")}</Link> : null}
         </div>
       </div>
     );

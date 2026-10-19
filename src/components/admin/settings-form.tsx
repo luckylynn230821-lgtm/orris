@@ -32,8 +32,8 @@ export function SettingsForm({ part }: { part: "content" | "shop" }) {
             slowCoverDays: Number(text("slow", String(raw.slowCoverDays))),
             replenishCoverDays: Number(text("cover", String(raw.replenishCoverDays))),
             minViews: Number(text("views", String(raw.minViews))),
-            highMarginBps: Math.round(Number(text("highMargin", String(raw.highMargin * 100))) * 100),
-            lowMarginBps: Math.round(Number(text("lowMargin", String(raw.lowMargin * 100))) * 100),
+            highMarginBps: Math.round(Number(text("highMargin", String((raw.highMargin ?? 0) * 100))) * 100),
+            lowMarginBps: Math.round(Number(text("lowMargin", String((raw.lowMargin ?? 0) * 100))) * 100),
             lowConversionBps: Math.round(Number(text("lowConv", String(raw.lowConversion * 100))) * 100),
             judgementDays: Number(text("judgement", String(raw.judgementDays))),
             hero: {
@@ -95,8 +95,12 @@ export function SettingsForm({ part }: { part: "content" | "shop" }) {
           <Field label="Slow cover, days" name="slow" defaultValue={String(raw.slowCoverDays)} />
           <Field label="Reorder under, days" name="cover" defaultValue={String(raw.replenishCoverDays)} />
           <Field label="Minimum views before a conversion judgement" name="views" defaultValue={String(raw.minViews)} />
-          <Field label="High margin %" name="highMargin" defaultValue={String(Math.round(raw.highMargin * 100))} />
-          <Field label="Low margin %" name="lowMargin" defaultValue={String(Math.round(raw.lowMargin * 100))} />
+          {raw.highMargin !== null && raw.lowMargin !== null ? (
+            <>
+              <Field label="High margin %" name="highMargin" defaultValue={String(Math.round(raw.highMargin * 100))} />
+              <Field label="Low margin %" name="lowMargin" defaultValue={String(Math.round(raw.lowMargin * 100))} />
+            </>
+          ) : null}
           <Field label="Low conversion %" name="lowConv" defaultValue={String(raw.lowConversion * 100)} />
           <Field label="Days before judging a new piece" name="judgement" defaultValue={String(raw.judgementDays)} />
           <p className="text-sm text-ash">Payments: demonstration checkout only. No card processor is configured, and the shop does not simulate a successful card charge.</p>
