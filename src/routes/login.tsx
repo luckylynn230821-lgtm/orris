@@ -25,6 +25,13 @@ function LoginPage() {
   const [mode, setMode] = useState<"in" | "up">("up");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [social, setSocial] = useState("");
+  const explain = (err: unknown) => {
+    const message = err instanceof Error ? err.message : "";
+    if (message.includes("Pop-up blocked")) return t("login.popupBlocked");
+    if (message.includes("cancelled")) return t("login.cancelled");
+    return message ? localize(message, tx) : t("login.failedIn");
+  };
   return (
     <StoreShell>
       <main className="mx-auto grid max-w-6xl gap-10 px-4 py-14 md:grid-cols-2 md:px-6">
@@ -37,10 +44,14 @@ function LoginPage() {
         </div>
         <div>
           {user ? (
-            <p className="text-sm leading-6">
-              {t("login.signedIn", { email: user.primaryEmail ?? "" })}{" "}
-              <Link to={dest} className="underline">{t("login.continue")}</Link>
-            </p>
+            <div className="text-sm leading-6">
+              <p>
+                {t("login.signedIn", { email: user.primaryEmail ?? "" })}
+              </p>
+              <Button className="mt-3" onClick={() => void navigate({ to: dest })}>
+                {t("login.continue")}
+              </Button>
+            </div>
           ) : null}
           {authEnabled ? (
             <form
@@ -81,7 +92,6 @@ function LoginPage() {
               {mode === "up" ? <Field label={t("login.name")} name="name" required /> : null}
               <Field label={t("login.email")} name="email" type="email" required />
               <Field label={t("login.password")} name="password" type="password" required minLength={8} />
-              {error ? <p className="text-sm text-danger">{error}</p> : null}
               <Button type="submit" disabled={pending} className="w-full">
                 {pending ? t("login.wait") : mode === "up" ? t("login.create") : t("login.signIn")}
               </Button>
@@ -93,14 +103,24 @@ function LoginPage() {
             <p className="mt-6 text-sm">{t("login.closed")}</p>
           )}
           <div className="mt-8 space-y-2">
+            {error ? <p className="text-sm text-danger">{error}</p> : null}
             {GROK_PROVIDERS.map((provider) => (
               <button
                 key={provider.providerId}
                 type="button"
-                className="h-11 w-full border border-line text-sm"
-                onClick={() => void signIn(provider.providerId, { callbackURL: dest })}
+                disabled={social !== ""}
+                className="h-11 w-full border border-line text-sm disabled:opacity-40"
+                onClick={() => {
+                  setSocial(provider.providerId);
+                  setError("");
+                  void signIn(provider.providerId, { callbackURL: dest })
+                    .catch((err: unknown) => setError(explain(err)))
+                    .finally(() => setSocial(""));
+                }}
               >
-                {t("login.with", { provider: provider.label })}
+                {social === provider.providerId
+                  ? t("login.opening", { provider: provider.label })
+                  : t("login.with", { provider: provider.label })}
               </button>
             ))}
           </div>

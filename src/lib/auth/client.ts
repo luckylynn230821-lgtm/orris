@@ -75,8 +75,24 @@ function setBearerToken(token: string | null): void {
 function inLivePreview(): boolean {
   return (
     typeof window !== "undefined" &&
-    window.location.hostname.endsWith(".grok-sandbox.com")
+    (window.location.hostname === "grok-sandbox.com" ||
+      window.location.hostname.endsWith(".grok-sandbox.com"))
   );
+}
+
+/**
+ * Google and X send `X-Frame-Options: DENY`, so a same-frame redirect inside the
+ * preview looks like the button did nothing. Use a popup whenever this page is
+ * framed, not only on `*.grok-sandbox.com`.
+ */
+function needsPopupSignIn(): boolean {
+  if (typeof window === "undefined") return false;
+  if (inLivePreview()) return true;
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
 }
 
 /** Message the popup posts back to the opener once sign-in completes. */
@@ -106,7 +122,17 @@ export async function signIn(
   // Open the popup SYNCHRONOUSLY on the user gesture — before any await
   // (including signOut). Awaiting first drops user-gesture privilege in some
   // browsers when the opener is a cross-origin live-preview iframe.
-  const popup = inLivePreview() ? openSignInPopup(providerId) : null;
+  const popupMode = needsPopupSignIn();
+  const popup = popupMode ? openSignInPopup(providerId) : null;
+  if (popupMode && !popup) {
+    throw new Error("Pop-up blocked — allow pop-ups for sign-in");
+  }
+  // Attach the listener before sign-out. A warm Google session can finish,
+  // post the token, and close while sign-out is still in flight. Listening
+  // only afterwards drops that message, and the button looks dead.
+  const tokenPromise = popup ? waitForPopupToken(popup) : null;
+  // A rejection during sign-out must not become an unhandled promise.
+  tokenPromise?.catch(() => undefined);
 
   // Clear any prior session so switching providers actually switches identity.
   // Bounded because the popup is already open — a request that never settles
@@ -120,10 +146,8 @@ export async function signIn(
     clearToken: () => setBearerToken(null),
   });
 
-  if (inLivePreview()) {
-    if (!popup) throw new Error("Pop-up blocked — allow pop-ups for sign-in");
-    const token = await waitForPopupToken(popup);
-    if (!token) throw new Error("Sign-in was cancelled or failed");
+  if (tokenPromise) {
+    const token = await tokenPromise;
     setBearerToken(token);
     // Refresh the client session store with the bearer attached (onRequest).
     // Avoid a full iframe reload when we're already on the destination — that
@@ -173,29 +197,37 @@ function openSignInPopup(providerId: string): Window | null {
  * Wait for the popup's completion page to postMessage the session bearer (or
  * for the user to dismiss the popup).
  */
-function waitForPopupToken(popup: Window): Promise<string | null> {
-  return new Promise((resolve) => {
+function waitForPopupToken(popup: Window): Promise<string> {
+  return new Promise((resolve, reject) => {
     const origin = window.location.origin;
     let settled = false;
     let closeTimer: number | undefined;
-    const settle = (token: string | null) => {
+    const finish = (token: string | null, error?: string) => {
       if (settled) return;
       settled = true;
       cleanup();
-      resolve(token);
+      if (token) resolve(token);
+      else reject(new Error(error || "Sign-in was cancelled or failed"));
     };
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== origin) return;
       const data = event.data as PopupMessage | undefined;
       if (!data || data.source !== "grok-auth-popup") return;
-      settle(data.token ?? null);
+      finish(data.token, data.error);
     };
     // Fallback when the user dismisses the popup. Grace period lets the
     // completion page's postMessage win over a racing `popup.closed`.
+    // Cross-origin COOP can throw on `popup.closed`; keep waiting for the message.
     const pollTimer = window.setInterval(() => {
-      if (!popup.closed) return;
+      let closed = false;
+      try {
+        closed = popup.closed;
+      } catch {
+        return;
+      }
+      if (!closed) return;
       window.clearInterval(pollTimer);
-      closeTimer = window.setTimeout(() => settle(null), 400);
+      closeTimer = window.setTimeout(() => finish(null, "Sign-in was cancelled or failed"), 400);
     }, 300);
     function cleanup() {
       window.clearInterval(pollTimer);
