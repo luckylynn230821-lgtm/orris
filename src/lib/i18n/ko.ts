@@ -67,6 +67,12 @@ export const ko = {
     saved: "저장했습니다. 전할 말이 생기면 쓰겠습니다.",
     failed: "이 주소를 저장하지 못했습니다.",
   },
+  collections: {
+    kicker: "컬렉션",
+    title: "여섯 가지 일. 긴 목록이 아닙니다.",
+    body: "숍은 지금 판매 중인 전부입니다. 컬렉션은 하나의 일입니다. 쉼, 옷, 식사, 손질, 산책, 놀이.",
+    pieces: "{{count}}개",
+  },
   shop: {
     collection: "스튜디오",
     allGoods: "모든 물건",

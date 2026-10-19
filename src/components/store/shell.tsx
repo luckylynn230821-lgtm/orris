@@ -61,7 +61,7 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
             <Link to="/shop" className="hover:text-ash">{t("nav.shop")}</Link>
             <Link to="/shop" search={{ pet: "dog" }} className="hover:text-ash">{t("nav.dogs")}</Link>
             <Link to="/shop" search={{ pet: "cat" }} className="hover:text-ash">{t("nav.cats")}</Link>
-            <Link to="/shop" className="hover:text-ash">{t("nav.collections")}</Link>
+            <Link to="/collections" className="hover:text-ash">{t("nav.collections")}</Link>
             <Link to="/about" className="hover:text-ash">{t("nav.house")}</Link>
           </nav>
           <div className="ml-auto flex items-center gap-1">
@@ -92,7 +92,7 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
             <p className="text-xs tracking-[0.16em] text-ash uppercase">{t("nav.shop")}</p>
             <Link to="/shop" search={{ pet: "dog" }} className="block">{t("nav.dogs")}</Link>
             <Link to="/shop" search={{ pet: "cat" }} className="block">{t("nav.cats")}</Link>
-            <Link to="/shop" className="block">{t("nav.collections")}</Link>
+            <Link to="/collections" className="block">{t("nav.collections")}</Link>
             <Link to="/about" className="block">{t("nav.house")}</Link>
           </div>
           <div className="text-sm leading-8">
@@ -116,7 +116,7 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
             <Link to="/shop" onClick={() => setMenu(false)}>{t("nav.shop")}</Link>
             <Link to="/shop" search={{ pet: "dog" }} onClick={() => setMenu(false)}>{t("nav.dogs")}</Link>
             <Link to="/shop" search={{ pet: "cat" }} onClick={() => setMenu(false)}>{t("nav.cats")}</Link>
-            <Link to="/shop" onClick={() => setMenu(false)}>{t("nav.collections")}</Link>
+            <Link to="/collections" onClick={() => setMenu(false)}>{t("nav.collections")}</Link>
             <Link to="/about" onClick={() => setMenu(false)}>{t("nav.house")}</Link>
             <Link to="/account" onClick={() => setMenu(false)}>{t("nav.account")}</Link>
             <Link to="/orders" onClick={() => setMenu(false)}>{t("nav.orders")}</Link>

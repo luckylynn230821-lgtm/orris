@@ -67,6 +67,12 @@ export const zhHant = {
     saved: "已儲存。有話要說時我們會寫。",
     failed: "沒能儲存這個地址。",
   },
+  collections: {
+    kicker: "系列",
+    title: "六件事，不是一張長清單。",
+    body: "商店是目前在售的全部商品。系列是一件事：休息、服飾、進食、清潔、外出或玩耍。",
+    pieces: "{{count}} 件",
+  },
   shop: {
     collection: "工作室",
     allGoods: "全部商品",

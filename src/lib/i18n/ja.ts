@@ -67,6 +67,12 @@ export const ja = {
     saved: "保存しました。伝えることがあるとき、書きます。",
     failed: "このアドレスを保存できませんでした。",
   },
+  collections: {
+    kicker: "コレクション",
+    title: "六つの仕事。長い一覧ではない。",
+    body: "ショップは今売っているすべてです。コレクションは一つの仕事です。休み、着るもの、食事、手入れ、散歩、遊び。",
+    pieces: "{{count}} 点",
+  },
   shop: {
     collection: "スタジオ",
     allGoods: "すべての品",

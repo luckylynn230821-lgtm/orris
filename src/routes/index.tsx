@@ -76,7 +76,7 @@ function Home() {
         <section className="mx-auto max-w-6xl px-4 pb-16 md:px-6">
           <div className="mb-6 flex items-end justify-between gap-4">
             <h2 className="text-4xl tracking-[-0.03em]">{t("home.favorites")}</h2>
-            <Link to="/shop" className="text-sm underline underline-offset-4">{t("nav.collections")}</Link>
+            <Link to="/collections" className="text-sm underline underline-offset-4">{t("nav.collections")}</Link>
           </div>
           <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-4">
             {data.featured.map((product, index) => (

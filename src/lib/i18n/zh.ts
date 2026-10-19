@@ -67,6 +67,12 @@ export const zh = {
     saved: "已保存。有话要说时我们会写。",
     failed: "没能保存这个地址。",
   },
+  collections: {
+    kicker: "系列",
+    title: "六件事，不是一张长清单。",
+    body: "商店是当前在售的全部商品。系列是一件事：休息、服饰、进食、清洁、外出或玩耍。",
+    pieces: "{{count}} 件",
+  },
   shop: {
     collection: "工作室",
     allGoods: "全部商品",

@@ -15,6 +15,7 @@ import { Route as AccountRouteImport } from './routes/account'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as CollectionsRouteImport } from './routes/collections'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
@@ -64,6 +65,11 @@ const CartRoute = CartRouteImport.update({
 const CheckoutRoute = CheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CollectionsRoute = CollectionsRouteImport.update({
+  id: '/collections',
+  path: '/collections',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -174,6 +180,7 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
+  '/collections': typeof CollectionsRoute
   '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -201,6 +208,7 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
+  '/collections': typeof CollectionsRoute
   '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -230,6 +238,7 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
+  '/collections': typeof CollectionsRoute
   '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -260,6 +269,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/cart'
     | '/checkout'
+    | '/collections'
     | '/login'
     | '/orders'
     | '/robots.txt'
@@ -287,6 +297,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/cart'
     | '/checkout'
+    | '/collections'
     | '/login'
     | '/orders'
     | '/robots.txt'
@@ -315,6 +326,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/cart'
     | '/checkout'
+    | '/collections'
     | '/login'
     | '/orders'
     | '/robots.txt'
@@ -344,6 +356,7 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   CartRoute: typeof CartRoute
   CheckoutRoute: typeof CheckoutRoute
+  CollectionsRoute: typeof CollectionsRoute
   LoginRoute: typeof LoginRoute
   OrdersRoute: typeof OrdersRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
@@ -396,6 +409,13 @@ declare module '@tanstack/react-router' {
       path: '/checkout'
       fullPath: '/checkout'
       preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/collections': {
+      id: '/collections'
+      path: '/collections'
+      fullPath: '/collections'
+      preLoaderRoute: typeof CollectionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -582,6 +602,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   CartRoute: CartRoute,
   CheckoutRoute: CheckoutRoute,
+  CollectionsRoute: CollectionsRoute,
   LoginRoute: LoginRoute,
   OrdersRoute: OrdersRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,

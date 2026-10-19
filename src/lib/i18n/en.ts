@@ -65,6 +65,12 @@ export const en = {
     saved: "Saved. We'll write when there is something to say.",
     failed: "We couldn't save that address.",
   },
+  collections: {
+    kicker: "Collections",
+    title: "Six jobs, not one long list.",
+    body: "Shop is every piece currently for sale. A collection is one job: rest, wear, feed, care, walk, or play.",
+    pieces: "{{count}} pieces",
+  },
   shop: {
     collection: "The studio",
     allGoods: "All goods",
