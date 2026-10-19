@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { StoreShell } from "@/components/store/shell";
 import { Button, Field } from "@/components/ui";
-import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
+import { GROK_PROVIDERS, authClient, authEnabled, authPopupUrl, signIn, watchPopupSignIn, type SignInEvent } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { localize } from "@/lib/i18n/text";
 import { useT } from "@/lib/i18n/provider";
@@ -25,13 +25,20 @@ function LoginPage() {
   const [mode, setMode] = useState<"in" | "up">("up");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
-  const [social, setSocial] = useState("");
-  const explain = (err: unknown) => {
-    const message = err instanceof Error ? err.message : "";
-    if (message.includes("Pop-up blocked")) return t("login.popupBlocked");
-    if (message.includes("cancelled")) return t("login.cancelled");
-    return message ? localize(message, tx) : t("login.failedIn");
+  const [log, setLog] = useState<string[]>([]);
+  const [blocked, setBlocked] = useState<{ id: string; label: string } | null>(null);
+  const addLine = (text: string) => setLog((prev) => [...prev, text]);
+  const lineFor = (event: SignInEvent, provider: string) => {
+    if (event.code === "opening") return t("login.traceOpening", { provider });
+    if (event.code === "blocked") return t("login.traceBlocked");
+    if (event.code === "waiting") return t("login.traceWaiting", { provider });
+    if (event.code === "redirecting") return t("login.traceRedirect");
+    if (event.code === "stuck") return t("login.traceStuck");
+    if (event.code === "done") return t("login.traceDone");
+    if (event.code === "cancelled") return t("login.traceCancelled");
+    return t("login.traceFailed", { message: event.detail || t("login.failedIn") });
   };
+  const shown = log.length > 0 ? log : [t("login.traceIdle")];
   return (
     <StoreShell>
       <main className="mx-auto grid max-w-6xl gap-10 px-4 py-14 md:grid-cols-2 md:px-6">
@@ -108,21 +115,56 @@ function LoginPage() {
               <button
                 key={provider.providerId}
                 type="button"
-                disabled={social !== ""}
-                className="h-11 w-full border border-line text-sm disabled:opacity-40"
+                className="h-11 w-full border border-line text-sm"
                 onClick={() => {
-                  setSocial(provider.providerId);
+                  let reported = false;
+                  setLog([t("login.traceClicked", { provider: provider.label })]);
+                  setBlocked(null);
                   setError("");
-                  void signIn(provider.providerId, { callbackURL: dest })
-                    .catch((err: unknown) => setError(explain(err)))
-                    .finally(() => setSocial(""));
+                  void signIn(provider.providerId, {
+                    callbackURL: dest,
+                    report: (event) => {
+                      reported = true;
+                      addLine(lineFor(event, provider.label));
+                      if (event.code === "blocked") setBlocked({ id: provider.providerId, label: provider.label });
+                    },
+                  }).catch((err: unknown) => {
+                    if (reported) return;
+                    const message = err instanceof Error ? err.message : "";
+                    addLine(t("login.traceFailed", { message: message || t("login.failedIn") }));
+                  });
                 }}
               >
-                {social === provider.providerId
-                  ? t("login.opening", { provider: provider.label })
-                  : t("login.with", { provider: provider.label })}
+                {t("login.with", { provider: provider.label })}
               </button>
             ))}
+            <div className="mt-3 border border-ink bg-paper p-4 text-sm" aria-live="polite">
+              <p className="text-xs tracking-[0.14em] text-ash uppercase">{t("login.traceTitle")}</p>
+              <ol className="mt-2 list-decimal space-y-1 pl-5">
+                {shown.map((item, index) => (
+                  <li key={`${index}-${item}`}>{item}</li>
+                ))}
+              </ol>
+              {blocked ? (
+                <a
+                  className="mt-3 inline-block underline"
+                  href={authPopupUrl(blocked.id)}
+                  target="_blank"
+                  rel="opener"
+                  onClick={() => {
+                    addLine(t("login.traceWaiting", { provider: blocked.label }));
+                    void watchPopupSignIn(dest)
+                      .then(() => addLine(t("login.traceDone")))
+                      .catch((err: unknown) => {
+                        const message = err instanceof Error ? err.message : "";
+                        addLine(message.includes("cancelled") ? t("login.traceCancelled") : t("login.traceFailed", { message: message || t("login.failedIn") }));
+                      });
+                  }}
+                >
+                  {t("login.traceOpenLink", { provider: blocked.label })}
+                </a>
+              ) : null}
+            </div>
           </div>
           <p className="mt-6 text-sm text-ash">
             {merchant ? (

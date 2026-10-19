@@ -1,6 +1,7 @@
 import { genericOAuthClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 import { runPreSignInSignOut, runSignOut } from "../../../scripts/sign-out-plan.mjs";
+import { previewPathPrefix } from "@/lib/preview-path-prefix";
 import { GROK_PROVIDERS } from "./providers";
 
 /**
@@ -98,6 +99,17 @@ function needsPopupSignIn(): boolean {
 /** Message the popup posts back to the opener once sign-in completes. */
 type PopupMessage = { source: "grok-auth-popup"; token: string | null; error?: string };
 
+export type SignInEvent = { code: "opening" | "blocked" | "waiting" | "redirecting" | "stuck" | "done" | "cancelled" | "failed"; detail?: string };
+
+/** Same-origin URL the sign-in tab loads. Keeps a path-based preview prefix. */
+export function authPopupUrl(providerId: string): string {
+  const prefix =
+    typeof window === "undefined"
+      ? ""
+      : (previewPathPrefix(window.location.hostname, window.location.pathname) ?? "");
+  return `${prefix}/auth/popup?providerId=${encodeURIComponent(providerId)}`;
+}
+
 /**
  * Start sign-in with one upstream provider (`providerId` from `GROK_PROVIDERS`),
  * federating through the Grok auth broker.
@@ -114,31 +126,32 @@ type PopupMessage = { source: "grok-auth-popup"; token: string | null; error?: s
  */
 export async function signIn(
   providerId: string,
-  opts: { callbackURL?: string; errorCallbackURL?: string } = {},
+  opts: { callbackURL?: string; errorCallbackURL?: string; report?: (event: SignInEvent) => void } = {},
 ): Promise<void> {
   const callbackURL = opts.callbackURL ?? "/";
   const errorCallbackURL = opts.errorCallbackURL ?? "/";
+  const report = opts.report ?? (() => {});
 
-  // Open the popup SYNCHRONOUSLY on the user gesture — before any await
-  // (including signOut). Awaiting first drops user-gesture privilege in some
-  // browsers when the opener is a cross-origin live-preview iframe.
+  // Open the tab SYNCHRONOUSLY on the user gesture — before any await.
+  // A small popup is easy to miss behind the preview; a tab is visible.
+  // Google refuses to render inside the preview frame, so a same-frame
+  // redirect looks like the button did nothing.
   const popupMode = needsPopupSignIn();
+  report({ code: popupMode ? "opening" : "redirecting" });
   const popup = popupMode ? openSignInPopup(providerId) : null;
   if (popupMode && !popup) {
+    report({ code: "blocked" });
     throw new Error("Pop-up blocked — allow pop-ups for sign-in");
   }
-  // Attach the listener before sign-out. A warm Google session can finish,
-  // post the token, and close while sign-out is still in flight. Listening
-  // only afterwards drops that message, and the button looks dead.
+  try {
+    popup?.focus();
+  } catch {
+    /* some browsers throw if the tab is cross-origin already */
+  }
   const tokenPromise = popup ? waitForPopupToken(popup) : null;
-  // A rejection during sign-out must not become an unhandled promise.
   tokenPromise?.catch(() => undefined);
+  if (popup) report({ code: "waiting" });
 
-  // Clear any prior session so switching providers actually switches identity.
-  // Bounded because the popup is already open — a request that never settles
-  // would leave it hanging — but bounded PER ENVIRONMENT: only the server can
-  // end a deployed session, so cutting it short at the preview's 1.5s would
-  // start OAuth with the old session still live.
   await runPreSignInSignOut({
     livePreview: inLivePreview(),
     hasBearer: Boolean(getBearerToken()),
@@ -147,22 +160,14 @@ export async function signIn(
   });
 
   if (tokenPromise) {
-    const token = await tokenPromise;
-    setBearerToken(token);
-    // Refresh the client session store with the bearer attached (onRequest).
-    // Avoid a full iframe reload when we're already on the destination — that
-    // reload was the slow "still loading after the popup closed" feeling.
     try {
-      await authClient.getSession();
-    } catch {
-      /* session store will recover on next useSession fetch */
-    }
-    if (typeof window !== "undefined") {
-      const dest = new URL(callbackURL, window.location.origin);
-      const here = window.location;
-      if (dest.origin !== here.origin || dest.pathname !== here.pathname || dest.search !== here.search) {
-        window.location.href = callbackURL;
-      }
+      const token = await tokenPromise;
+      await adoptSession(token, callbackURL);
+      report({ code: "done" });
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : "Sign-in was cancelled or failed";
+      report({ code: detail.includes("cancelled") ? "cancelled" : "failed", detail });
+      throw err;
     }
     return;
   }
@@ -172,8 +177,42 @@ export async function signIn(
     callbackURL,
     errorCallbackURL,
   });
-  if (error) throw new Error(error.message ?? "Sign-in failed");
-  if (data?.url) window.location.href = data.url;
+  if (error) {
+    report({ code: "failed", detail: error.message ?? "Sign-in failed" });
+    throw new Error(error.message ?? "Sign-in failed");
+  }
+  if (!data?.url) {
+    report({ code: "failed", detail: "The sign-in site did not return a link." });
+    throw new Error("The sign-in site did not return a link.");
+  }
+  const stay = window.location.href;
+  window.location.assign(data.url);
+  window.setTimeout(() => {
+    if (window.location.href === stay) report({ code: "stuck" });
+  }, 1500);
+}
+
+async function adoptSession(token: string, callbackURL: string) {
+  setBearerToken(token);
+  try {
+    await authClient.getSession();
+  } catch {
+    /* session store will recover on next useSession fetch */
+  }
+  if (typeof window === "undefined") return;
+  const dest = new URL(callbackURL, window.location.origin);
+  const here = window.location;
+  if (dest.origin !== here.origin || dest.pathname !== here.pathname || dest.search !== here.search) {
+    window.location.href = callbackURL;
+  }
+}
+
+/**
+ * Finish a sign-in that the visitor opened with a real link (no window handle).
+ * Used when the first tab was blocked and they click "open in a new tab".
+ */
+export function watchPopupSignIn(callbackURL = "/"): Promise<void> {
+  return waitForPopupMessage().then((token) => adoptSession(token, callbackURL));
 }
 
 /**
@@ -186,11 +225,33 @@ export async function signIn(
  * ends up showing the app shell.
  */
 function openSignInPopup(providerId: string): Window | null {
-  const origin = window.location.origin;
-  const url = `${origin}/auth/popup?providerId=${encodeURIComponent(providerId)}`;
-  // Unique name per attempt so a prior attempt stuck on the SPA is not reused.
-  const name = `grok-signin-${Date.now()}`;
-  return window.open(url, name, "popup,width=500,height=650");
+  const url = authPopupUrl(providerId);
+  // A named tab, not a tiny popup. No `noopener`, or the tab cannot post the
+  // session back. Unique name so a stuck previous tab is not reused.
+  return window.open(url, `grok-signin-${Date.now()}`);
+}
+
+function waitForPopupMessage(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const origin = window.location.origin;
+    const timer = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("Sign-in was cancelled or failed"));
+    }, 180_000);
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== origin) return;
+      const data = event.data as PopupMessage | undefined;
+      if (!data || data.source !== "grok-auth-popup") return;
+      cleanup();
+      if (data.token) resolve(data.token);
+      else reject(new Error(data.error || "Sign-in was cancelled or failed"));
+    };
+    function cleanup() {
+      window.clearTimeout(timer);
+      window.removeEventListener("message", onMessage);
+    }
+    window.addEventListener("message", onMessage);
+  });
 }
 
 /**
