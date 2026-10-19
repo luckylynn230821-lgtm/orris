@@ -1,4 +1,5 @@
 import { createRouter } from "@tanstack/react-router";
+import { PageLoading } from "@/components/loading-screen";
 import { AppErrorComponent } from "@/lib/error-component";
 import { previewPathRewrite } from "@/lib/preview-path-prefix";
 import { routeTree } from "./routeTree.gen";
@@ -8,6 +9,8 @@ export function getRouter() {
     routeTree,
     rewrite: previewPathRewrite(),
     defaultErrorComponent: AppErrorComponent,
+    defaultPendingComponent: PageLoading,
+    defaultPendingMs: 400,
     scrollRestoration: true,
   });
 }

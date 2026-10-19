@@ -17,6 +17,27 @@ import {
 } from "./metrics";
 import { ensureSeeded } from "./seed.server";
 
+async function logisticsCost(
+  sql: Awaited<ReturnType<typeof getSql>>,
+  start: Date,
+  end: Date,
+  includeDemo: boolean,
+) {
+  try {
+    const rows = await sql.query<{ n: number }>(
+      `select coalesce(sum(f.logistics_cost_cents), 0)::int as n
+       from fulfillments f
+       join orders o on o.id = f.order_id
+       where o.created_at >= $1 and o.created_at < $2
+         and ($3::boolean or o.is_demo = false)`,
+      [start.toISOString(), end.toISOString(), includeDemo],
+    );
+    return num(rows[0]?.n);
+  } catch {
+    return 0;
+  }
+}
+
 export async function loadAnalytics(input: {
   range: RangeKey;
   from?: string;
@@ -191,6 +212,7 @@ export async function loadAnalytics(input: {
       profit: "Net sales minus the cost snapshot of units still kept by the customer. Not net profit.",
       aov: "Paid order total after refunds, including shipping and tax, divided by paid orders.",
     },
+    logisticsCostCents: await logisticsCost(sql, range.start, range.end, input.includeDemo),
   };
 }
 

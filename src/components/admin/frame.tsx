@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { DeskLoading } from "@/components/loading-screen";
 import { LanguageSwitch } from "@/components/language-switch";
 import { signIn } from "@/lib/auth/client";
 import { GROK_PROVIDERS } from "@/lib/auth/providers";
@@ -81,16 +82,11 @@ export function AdminFrame({ children }: { children: ReactNode }) {
     };
   }, [user?.id, tx]);
   if (isPending || (user && !access && !sessionError)) {
-    return (
-      <div className="min-h-screen bg-stone p-8">
-        <div className="h-8 w-40 animate-pulse bg-line" />
-        <div className="mt-6 h-40 animate-pulse bg-paper" />
-      </div>
-    );
+    return <DeskLoading />;
   }
   if (!user) {
     return (
-      <main className="grid min-h-screen place-items-center bg-ivory px-6">
+      <main className="desk grid min-h-screen place-items-center bg-stone px-6">
         <div className="w-full max-w-md">
           <p className="text-xs tracking-[0.2em] text-ash uppercase">{t("admin.gateKicker")}</p>
           <h1 className="mt-3 text-4xl">{t("admin.gateTitle")}</h1>
@@ -113,7 +109,7 @@ export function AdminFrame({ children }: { children: ReactNode }) {
   }
   if (sessionError || !access) {
     return (
-      <main className="grid min-h-screen place-items-center bg-ivory px-6">
+      <main className="desk grid min-h-screen place-items-center bg-stone px-6">
         <div className="w-full max-w-md">
           <h1 className="text-4xl">{t("admin.gateTitle")}</h1>
           <p className="mt-3 text-sm leading-6 text-ash">{sessionError || t("admin.denied")}</p>
@@ -126,7 +122,7 @@ export function AdminFrame({ children }: { children: ReactNode }) {
   const roleKey = `admin.role${access.role[0]?.toUpperCase()}${access.role.slice(1)}` as MessageKey;
   return (
     <DeskContext.Provider value={access}>
-      <div className="min-h-screen bg-stone text-ink md:grid md:grid-cols-[220px_1fr]">
+      <div className="desk min-h-screen bg-stone text-ink md:grid md:grid-cols-[220px_1fr]">
         <aside className="bg-ink text-ivory md:min-h-screen">
           <div className="flex items-center justify-between px-4 py-5">
             <Link to="/" className="font-display text-xl tracking-[-0.04em]">Desk</Link>

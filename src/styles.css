@@ -48,6 +48,27 @@
   }
 }
 
+/* Merchant desk only. The shop keeps the warm palette above. */
+.desk {
+  --color-ivory: #f7fafc;
+  --color-stone: #f2f6fb;
+  --color-paper: #ffffff;
+  --color-ink: #1a4b7c;
+  --color-ash: #5e7590;
+  --color-line: #d6e4f2;
+  --color-brass: #2f7ec4;
+  background: var(--color-stone);
+  color: var(--color-ink);
+}
+
+@keyframes desk-spin {
+  to { transform: rotate(360deg); }
+}
+
+.desk-spin {
+  animation: desk-spin 0.8s linear infinite;
+}
+
 @keyframes studio-in {
   from { opacity: 0; transform: scale(1.03); }
   to { opacity: 1; transform: scale(1); }
