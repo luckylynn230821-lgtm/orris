@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button, Field } from "@/components/ui";
+import { useDeskAccess } from "@/components/admin/frame";
 import { adminCancel, adminFulfill, adminOrder, adminRefund, adminResolveService } from "@/lib/commerce/fns";
 import { dollarsToCents, money } from "@/lib/format";
 import { localize } from "@/lib/i18n/text";
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/admin/orders/$id")({
 function OrderDesk() {
   const { id } = Route.useParams();
   const { t, tx } = useT();
+  const access = useDeskAccess();
   const [order, setOrder] = useState<Awaited<ReturnType<typeof adminOrder>> | null>(null);
   const [ready, setReady] = useState(false);
   const load = () => {
@@ -78,7 +80,7 @@ function OrderDesk() {
       {order.stageKey === "toreceive" ? (
         <p className="mt-6 text-sm">{t("admin.inTransit")}</p>
       ) : null}
-      {order.adminLabel === "stage.aftersalesOpen.admin" ? (
+      {access?.permissions.refund && order.adminLabel === "stage.aftersalesOpen.admin" ? (
         <div className="mt-6 flex flex-wrap gap-3">
           <Button
             onClick={() => {
@@ -101,6 +103,7 @@ function OrderDesk() {
           </Button>
         </div>
       ) : null}
+      {access?.permissions.refund ? (
       <form
         className="mt-4 grid gap-3 border border-line bg-paper p-4"
         onSubmit={(event) => {
@@ -125,6 +128,8 @@ function OrderDesk() {
         <label className="text-sm"><input type="checkbox" name="restock" /> {t("admin.restock")}</label>
         <Button type="submit">{t("admin.recordRefund")}</Button>
       </form>
+      ) : null}
+      {access?.permissions.refund ? (
       <button
         className="mt-4 text-sm text-danger underline"
         onClick={() => {
@@ -134,6 +139,7 @@ function OrderDesk() {
       >
         {t("admin.cancel")}
       </button>
+      ) : null}
     </div>
   );
 }

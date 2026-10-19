@@ -6,32 +6,86 @@ import { stageOf } from "./stages";
 import { faceFor } from "./customer.server";
 import { ensureSeeded } from "./seed.server";
 import { withTx } from "./tx.server";
+import { STAFF_CAP, can, deskPermissions, type DeskRole, type PermissionRequest } from "./access";
+
+function asRole(role: string): DeskRole {
+  if (role === "owner" || role === "administrator") return "owner";
+  if (role === "manager" || role === "staff") return role;
+  throw userError("err.forbidden");
+}
 
 async function actor(userId: string) {
   await ensureSeeded();
   const sql = await getSql();
   const people = await sql<{ email: string; name: string }>`select email, name from "user" where id = ${userId}`;
-  const email = people[0]?.email ?? null;
+  const email = people[0]?.email?.trim().toLowerCase() ?? null;
   const name = people[0]?.name ?? null;
-  const members = await sql<{ user_id: string }>`select user_id from store_members`;
+  const members = await sql<{ user_id: string; role: string }>`select user_id, role from store_members`;
   if (members.length === 0) {
     try {
-      await sql`insert into store_members (user_id, role, email, name) values (${userId}, 'administrator', ${email}, ${name})`;
+      await sql`insert into store_members (user_id, role, email, name) values (${userId}, 'owner', ${email}, ${name})`;
       await sql`insert into audit_logs (actor_id, action, entity, entity_id, detail) values (${userId}, 'claim_store', 'store', '1', ${JSON.stringify({ email })}::jsonb)`;
     } catch {
       const mine = await sql<{ user_id: string }>`select user_id from store_members where user_id = ${userId}`;
-      if (!mine[0]) throw userError("This shop already has an administrator.");
+      if (!mine[0]) throw userError("err.forbidden");
     }
-    return;
+    return { role: "owner" as const, email, name };
   }
-  if (!members.some((member) => member.user_id === userId)) {
-    throw userError("This shop already has an administrator. Ask them for access.");
+  const mine = members.find((member) => member.user_id === userId);
+  if (mine) {
+    const role = asRole(mine.role);
+    if (mine.role !== role) {
+      await sql`update store_members set role = ${role} where user_id = ${userId}`;
+    }
+    await sql`update store_members set email = ${email}, name = ${name} where user_id = ${userId}`;
+    return { role, email, name };
   }
-  await sql`update store_members set email = ${email}, name = ${name} where user_id = ${userId}`;
+  if (email) {
+    const invites = await sql<{ role: string }>`select role from store_invites where email = ${email}`;
+    if (invites[0]) {
+      const role = asRole(invites[0].role);
+      if (role === "owner") throw userError("err.forbidden");
+      const used = await seatCount();
+      if (used >= STAFF_CAP) throw userError("err.seatsFull");
+      await sql`insert into store_members (user_id, role, email, name) values (${userId}, ${role}, ${email}, ${name})`;
+      await sql`delete from store_invites where email = ${email}`;
+      await audit(userId, "accept_invite", "member", userId, { email, role });
+      return { role, email, name };
+    }
+  }
+  throw userError("err.notOnDesk");
+}
+
+async function seatCount() {
+  const sql = await getSql();
+  const rows = await sql<{ used: number }>`
+    select (
+      (select count(*) from store_members where role in ('manager', 'staff'))
+      + (select count(*) from store_invites)
+    )::int as used
+  `;
+  return num(rows[0]?.used);
+}
+
+async function requireDesk(userId: string, request?: PermissionRequest, connector?: "OR" | "AND") {
+  const session = await actor(userId);
+  if (request && !can(session.role, request, connector)) throw userError("err.forbidden");
+  return session;
 }
 
 export async function assertAdminThen(userId: string) {
-  await actor(userId);
+  await requireDesk(userId, { money: ["read"] });
+}
+
+export async function deskSession(userId: string) {
+  const session = await actor(userId);
+  return {
+    role: session.role,
+    email: session.email,
+    name: session.name,
+    permissions: deskPermissions(session.role),
+    seats: { used: await seatCount(), cap: STAFF_CAP },
+  };
 }
 
 async function audit(userId: string, action: string, entity: string, entityId: string, detail: unknown) {
@@ -40,7 +94,7 @@ async function audit(userId: string, action: string, entity: string, entityId: s
 }
 
 export async function adminCatalog(userId: string) {
-  await actor(userId);
+  await requireDesk(userId, { catalog: ["read"] });
   const [products, categories] = await Promise.all([loadAllProducts(), loadCategories()]);
   return {
     products: products.map((product) => ({
@@ -89,7 +143,7 @@ export async function saveProduct(
     variants: VariantInput[];
   },
 ) {
-  await actor(userId);
+  await requireDesk(userId, { catalog: ["update"] });
   const name = input.name.trim();
   const slug = slugify(input.slug || name);
   if (!name || !slug) throw userError("A product needs a name.");
@@ -210,7 +264,7 @@ export async function bulkProducts(
   userId: string,
   input: { ids: string[]; action: "publish" | "draft" | "archive" | "category" | "price"; categoryId?: string; percent?: number },
 ) {
-  await actor(userId);
+  await requireDesk(userId, { catalog: ["update"] });
   if (input.ids.length === 0) throw userError("Select at least one product.");
   const ids = JSON.stringify(input.ids);
   await withTx(async (query) => {
@@ -247,7 +301,7 @@ export async function saveImage(
   userId: string,
   input: { productId: string; dataUrl?: string; url?: string; alt: string },
 ) {
-  await actor(userId);
+  await requireDesk(userId, { catalog: ["update"] });
   let url = input.url?.trim() ?? "";
   if (input.dataUrl) {
     const match = /^data:image\/(jpeg|png|webp);base64,[a-z0-9+/=\s]+$/i.exec(input.dataUrl);
@@ -267,7 +321,7 @@ export async function saveImage(
 }
 
 export async function updateImage(userId: string, input: { id: string; alt?: string; cover?: boolean; delete?: boolean }) {
-  await actor(userId);
+  await requireDesk(userId, { catalog: ["update"] });
   const sql = await getSql();
   if (input.delete) {
     await sql`delete from product_images where id = ${input.id}`;
@@ -288,7 +342,7 @@ export async function updateImage(userId: string, input: { id: string; alt?: str
 }
 
 export async function adjustStock(userId: string, input: { variantId: string; delta: number; note: string }) {
-  await actor(userId);
+  await requireDesk(userId, { inventory: ["adjust"] });
   if (!Number.isInteger(input.delta) || input.delta === 0) throw userError("Enter a whole number of units, other than zero.");
   await withTx(async (query) => {
     const rows = await query<{ inventory_qty: number }>(
@@ -308,7 +362,9 @@ export async function adjustStock(userId: string, input: { variantId: string; de
 }
 
 export async function listInventory(userId: string) {
-  await actor(userId);
+  const session = await requireDesk(userId, { inventory: ["read"] });
+  const seeCost = can(session.role, { money: ["read"] });
+  const canAdjust = can(session.role, { inventory: ["adjust"] });
   const settings = await readSettings();
   const sql = await getSql();
   const rows = await sql<{
@@ -337,8 +393,8 @@ export async function listInventory(userId: string) {
     sku: row.sku,
     title: row.title,
     qty: num(row.inventory_qty),
-    costCents: num(row.cost_cents),
-    valueCents: num(row.inventory_qty) * num(row.cost_cents),
+    costCents: seeCost ? num(row.cost_cents) : null,
+    valueCents: seeCost ? num(row.inventory_qty) * num(row.cost_cents) : null,
     productName: row.product_name,
     status: row.status,
     low: num(row.inventory_qty) > 0 && num(row.inventory_qty) <= settings.lowStock,
@@ -357,16 +413,18 @@ export async function listInventory(userId: string) {
     })),
     summary: {
       units: variants.reduce((sum, row) => sum + row.qty, 0),
-      valueCents: variants.reduce((sum, row) => sum + row.valueCents, 0),
+      valueCents: seeCost ? variants.reduce((sum, row) => sum + (row.valueCents ?? 0), 0) : null,
       low: variants.filter((row) => row.low).length,
       out: variants.filter((row) => row.out).length,
     },
     lowStockThreshold: settings.lowStock,
+    canSeeCost: seeCost,
+    canAdjust,
   };
 }
 
 export async function listOrders(userId: string, q: string) {
-  await actor(userId);
+  await requireDesk(userId, { order: ["read"] });
   const sql = await getSql();
   const query = `%${q.trim().toLowerCase()}%`;
   const rows = await sql<Record<string, unknown>>`
@@ -407,7 +465,7 @@ export async function listOrders(userId: string, q: string) {
 }
 
 export async function orderDetail(userId: string, id: string) {
-  await actor(userId);
+  await requireDesk(userId, { order: ["read"] });
   const sql = await getSql();
   const orders = await sql<Record<string, unknown>>`select * from orders where id = ${id} or number = ${id} limit 1`;
   const order = orders[0];
@@ -469,7 +527,7 @@ export async function orderDetail(userId: string, id: string) {
 }
 
 export async function fulfillOrder(userId: string, input: { id: string; carrier: string; tracking: string }) {
-  await actor(userId);
+  await requireDesk(userId, { order: ["fulfill"] });
   await withTx(async (query) => {
     const rows = await query<{ payment_status: string; fulfillment_status: string; number: string }>(
       "select payment_status, fulfillment_status, number from orders where id = $1 for update",
@@ -503,7 +561,7 @@ export async function fulfillOrder(userId: string, input: { id: string; carrier:
 }
 
 export async function refundOrder(userId: string, input: { id: string; amountCents: number; reason: string; restock: boolean }) {
-  await actor(userId);
+  await requireDesk(userId, { order: ["refund"] });
   if (input.amountCents <= 0) throw userError("Enter a refund amount.");
   await withTx(async (query) => {
     const orders = await query<{ total_cents: number; refunded_cents: number; number: string }>(
@@ -559,7 +617,7 @@ export async function refundOrder(userId: string, input: { id: string; amountCen
 }
 
 export async function cancelOrder(userId: string, id: string) {
-  await actor(userId);
+  await requireDesk(userId, { order: ["refund"] });
   const detail = await orderDetail(userId, id);
   if (!detail) throw userError("Order not found.");
   const remaining = detail.totalCents - detail.refundedCents;
@@ -601,7 +659,7 @@ export async function cancelOrder(userId: string, id: string) {
 }
 
 export async function resolveService(userId: string, input: { id: string; action: "refund" | "reject"; restock: boolean }) {
-  await actor(userId);
+  await requireDesk(userId, { order: ["refund"] });
   const detail = await orderDetail(userId, input.id);
   if (!detail) throw userError("Order not found.");
   const sql = await getSql();
@@ -622,7 +680,7 @@ export async function resolveService(userId: string, input: { id: string; action
 }
 
 export async function listCustomers(userId: string) {
-  await actor(userId);
+  await requireDesk(userId, { customer: ["read"] });
   const sql = await getSql();
   const rows = await sql<Record<string, unknown>>`
     select c.id, c.email, c.name, c.is_demo, c.created_at,
@@ -646,7 +704,7 @@ export async function listCustomers(userId: string) {
 }
 
 export async function loadSettings(userId: string) {
-  await actor(userId);
+  await requireDesk(userId, { settings: ["update"] });
   const settings = await readSettings();
   const sql = await getSql();
   const members = await sql<{ user_id: string; email: string | null; name: string | null; created_at: unknown }>`
@@ -699,7 +757,7 @@ export async function saveSettings(
     socials: { label: string; href: string }[];
   },
 ) {
-  await actor(userId);
+  await requireDesk(userId, { settings: ["update"] });
   const sql = await getSql();
   await sql`
     update store_settings set
@@ -731,7 +789,7 @@ export async function saveSettings(
 }
 
 export async function importCsv(userId: string, csv: string) {
-  await actor(userId);
+  await requireDesk(userId, { catalog: ["update"] });
   const lines = csv.trim().split(/\r?\n/).filter(Boolean);
   if (lines.length < 2) throw userError("The CSV needs a header and one row.");
   const header = lines[0]!.split(",").map((cell) => cell.trim().toLowerCase());
@@ -775,4 +833,75 @@ export async function importCsv(userId: string, csv: string) {
     created += 1;
   }
   return { created };
+}
+
+export async function listTeam(userId: string) {
+  await requireDesk(userId, { team: ["manage"] });
+  const sql = await getSql();
+  const members = await sql<{ user_id: string; role: string; email: string | null; name: string | null; created_at: unknown }>`
+    select user_id, role, email, name, created_at from store_members order by created_at
+  `;
+  const invites = await sql<{ email: string; role: string; created_at: unknown }>`
+    select email, role, created_at from store_invites order by created_at
+  `;
+  return {
+    members: members.map((member) => ({
+      userId: member.user_id,
+      email: member.email,
+      name: member.name,
+      role: asRole(member.role),
+      since: iso(member.created_at),
+    })),
+    invites: invites.map((invite) => ({
+      email: invite.email,
+      role: asRole(invite.role),
+      since: iso(invite.created_at),
+    })),
+    seats: { used: await seatCount(), cap: STAFF_CAP },
+  };
+}
+
+export async function grantSeat(userId: string, input: { email: string; role: "manager" | "staff" }) {
+  await requireDesk(userId, { team: ["manage"] });
+  const email = input.email.trim().toLowerCase();
+  if (!email.includes("@") || email.length > 160) throw userError("err.email");
+  const sql = await getSql();
+  const owners = await sql<{ email: string | null }>`select email from store_members where role = 'owner'`;
+  if (owners.some((owner) => owner.email?.toLowerCase() === email)) throw userError("err.ownerFixed");
+  const existing = await sql<{ user_id: string; role: string }>`
+    select user_id, role from store_members where lower(email) = ${email}
+  `;
+  const invited = await sql<{ email: string }>`select email from store_invites where email = ${email}`;
+  if (!existing[0] && !invited[0] && (await seatCount()) >= STAFF_CAP) throw userError("err.seatsFull");
+  if (existing[0]) {
+    if (existing[0].role === "owner") throw userError("err.ownerFixed");
+    await sql`update store_members set role = ${input.role} where user_id = ${existing[0].user_id}`;
+  } else {
+    const users = await sql<{ id: string; name: string | null }>`select id, name from "user" where lower(email) = ${email}`;
+    if (users[0]) {
+      await sql`
+        insert into store_members (user_id, role, email, name)
+        values (${users[0].id}, ${input.role}, ${email}, ${users[0].name})
+        on conflict (user_id) do update set role = ${input.role}, email = ${email}
+      `;
+      await sql`delete from store_invites where email = ${email}`;
+    } else {
+      await sql`
+        insert into store_invites (email, role) values (${email}, ${input.role})
+        on conflict (email) do update set role = ${input.role}
+      `;
+    }
+  }
+  await audit(userId, "grant_seat", "member", email, { email, role: input.role });
+  return listTeam(userId);
+}
+
+export async function revokeSeat(userId: string, emailRaw: string) {
+  await requireDesk(userId, { team: ["manage"] });
+  const email = emailRaw.trim().toLowerCase();
+  const sql = await getSql();
+  await sql`delete from store_members where role <> 'owner' and lower(email) = ${email}`;
+  await sql`delete from store_invites where email = ${email}`;
+  await audit(userId, "revoke_seat", "member", email, { email });
+  return listTeam(userId);
 }

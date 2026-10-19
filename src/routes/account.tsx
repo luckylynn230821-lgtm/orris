@@ -69,7 +69,10 @@ function AccountPage() {
           <div className="mt-6">
             <div className="flex items-center justify-between gap-3 text-sm">
               <p>{user.primaryEmail}</p>
-              <UserButton />
+              <div className="flex items-center gap-3">
+                <Link to="/admin" className="underline">{t("nav.merchant")}</Link>
+                <UserButton />
+              </div>
             </div>
             {fresh ? <p className="mt-3 text-sm">{t("account.updated")}</p> : null}
             <div className="mt-6 flex gap-2 overflow-auto">

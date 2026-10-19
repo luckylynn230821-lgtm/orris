@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { RangeBar, useAnalytics } from "@/components/admin/analytics-view";
-import { AdminError } from "@/components/admin/frame";
+import { AdminError, useDeskAccess } from "@/components/admin/frame";
 import { money, pct, growthLabel } from "@/lib/format";
 import { useT } from "@/lib/i18n/provider";
 import type { RangeKey } from "@/lib/commerce/metrics";
@@ -13,6 +13,24 @@ export const Route = createFileRoute("/admin/")({
 });
 
 function Overview() {
+  const access = useDeskAccess();
+  const { t } = useT();
+  if (!access?.permissions.money) {
+    return (
+      <div>
+        <h1 className="text-4xl">{t("admin.staffHome")}</h1>
+        <p className="mt-3 max-w-xl text-sm leading-6 text-ash">{t("admin.staffHomeBody")}</p>
+        <div className="mt-6 flex gap-4 text-sm">
+          <Link to="/admin/orders" className="underline">{t("admin.orders")}</Link>
+          <Link to="/admin/inventory" className="underline">{t("admin.inventory")}</Link>
+        </div>
+      </div>
+    );
+  }
+  return <MoneyOverview />;
+}
+
+function MoneyOverview() {
   const [range, setRange] = useState<RangeKey>("30d");
   const [includeDemo, setIncludeDemo] = useState(true);
   const { t } = useT();

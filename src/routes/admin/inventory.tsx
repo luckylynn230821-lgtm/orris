@@ -30,7 +30,7 @@ function InventoryPage() {
         <>
           <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
             <Stat label="Units" value={String(data.summary.units)} />
-            <Stat label="Cost value" value={money(data.summary.valueCents)} />
+            <Stat label="Cost value" value={data.canSeeCost && data.summary.valueCents !== null ? money(data.summary.valueCents) : "—"} />
             <Stat label="Low" value={String(data.summary.low)} />
             <Stat label="Out" value={String(data.summary.out)} />
           </div>
@@ -43,8 +43,9 @@ function InventoryPage() {
                     <td className="p-3">{row.productName} · {row.title}{row.out ? " · out" : row.low ? " · low" : ""}</td>
                     <td className="p-3">{row.sku}</td>
                     <td className="p-3 tabular-nums">{row.qty}</td>
-                    <td className="p-3 tabular-nums">{money(row.valueCents)}</td>
+                    <td className="p-3 tabular-nums">{row.valueCents === null ? "—" : money(row.valueCents)}</td>
                     <td className="p-3">
+                      {data.canAdjust ? (
                       <button className="underline" onClick={() => {
                         const raw = window.prompt("Units to add (negative to remove)");
                         if (!raw) return;
@@ -52,6 +53,7 @@ function InventoryPage() {
                           .then(() => { toast("Stock updated"); load(); })
                           .catch((err: unknown) => toast(err instanceof Error ? err.message : "Failed"));
                       }}>Adjust</button>
+                      ) : null}
                     </td>
                   </tr>
                 ))}

@@ -192,6 +192,38 @@ const rangeSchema = z.object({
   includeDemo: z.boolean().optional(),
 });
 
+export const adminSession = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const { deskSession } = await import("./admin.server");
+    return guard(() => deskSession(context.userId));
+  });
+
+export const adminTeam = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const { listTeam } = await import("./admin.server");
+    return guard(() => listTeam(context.userId));
+  });
+
+export const adminGrant = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) =>
+    z.object({ email: z.string().trim().email().max(160), role: z.enum(["manager", "staff"]) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { grantSeat } = await import("./admin.server");
+    return guard(() => grantSeat(context.userId, data));
+  });
+
+export const adminRevoke = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => z.object({ email: z.string().trim().email().max(160) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { revokeSeat } = await import("./admin.server");
+    return guard(() => revokeSeat(context.userId, data.email));
+  });
+
 export const adminAnalytics = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => rangeSchema.parse(input))
