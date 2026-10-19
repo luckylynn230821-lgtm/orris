@@ -36,6 +36,11 @@ function makeI18n(locale: Locale): I18n {
 export function I18nProvider({ initial, children }: { initial: Locale; children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(initial);
   const [i18n] = useState(() => makeI18n(initial));
+  // The instance is created once. Later catalog edits (and a hot reload) must
+  // still reach it, or new keys show up as the raw key name.
+  for (const [lng, catalog] of Object.entries(catalogs)) {
+    i18n.addResourceBundle(lng, "translation", catalog, true, true);
+  }
   const value = useMemo<LocaleContextValue>(
     () => ({
       locale,
