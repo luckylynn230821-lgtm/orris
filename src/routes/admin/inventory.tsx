@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { AdminError } from "@/components/admin/frame";
 import { adminAdjustStock, adminInventory } from "@/lib/commerce/fns";
 import { money } from "@/lib/format";
+import { localize } from "@/lib/i18n/text";
 import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/admin/inventory")({
@@ -12,13 +13,32 @@ export const Route = createFileRoute("/admin/inventory")({
 });
 
 function InventoryPage() {
-  const { t } = useT();
+  const { t, tx } = useT();
   const [data, setData] = useState<Awaited<ReturnType<typeof adminInventory>> | null>(null);
   const [error, setError] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [delta, setDelta] = useState("");
+  const [rowError, setRowError] = useState("");
   const load = () => {
     void adminInventory().then(setData).catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed"));
   };
   useEffect(load, []);
+  const save = (variantId: string) => {
+    const value = Number(delta.trim());
+    if (!Number.isInteger(value) || value === 0) {
+      setRowError(t("desk.adjustBad"));
+      return;
+    }
+    setRowError("");
+    void adminAdjustStock({ data: { variantId, delta: value, note: t("desk.deskNote") } })
+      .then(() => {
+        toast(t("desk.stockUpdated"));
+        setEditId(null);
+        setDelta("");
+        load();
+      })
+      .catch((err: unknown) => toast(err instanceof Error ? localize(err.message, tx) : t("admin.failed")));
+  };
   return (
     <div>
       <h1 className="text-4xl">{t("admin.inventoryTitle")}</h1>
@@ -46,13 +66,53 @@ function InventoryPage() {
                     {data.canSeeCost ? <td className="p-3 tabular-nums">{row.valueCents === null ? "—" : money(row.valueCents)}</td> : null}
                     <td className="p-3">
                       {data.canAdjust ? (
-                      <button className="underline" onClick={() => {
-                        const raw = window.prompt(t("desk.adjustPrompt"));
-                        if (!raw) return;
-                        void adminAdjustStock({ data: { variantId: row.id, delta: Number(raw), note: t("desk.deskNote") } })
-                          .then(() => { toast(t("desk.stockUpdated")); load(); })
-                          .catch((err: unknown) => toast(err instanceof Error ? err.message : "Failed"));
-                      }}>{t("desk.adjust")}</button>
+                        editId === row.id ? (
+                          <form
+                            className="flex flex-col items-start gap-1"
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              save(row.id);
+                            }}
+                          >
+                            <input
+                              autoFocus
+                              inputMode="numeric"
+                              value={delta}
+                              onChange={(event) => setDelta(event.target.value)}
+                              placeholder="+1"
+                              aria-label={t("desk.adjustPrompt")}
+                              className="h-9 w-28 border border-line bg-ivory px-2"
+                            />
+                            <p className="max-w-[12rem] text-xs text-ash">{t("desk.adjustPrompt")}</p>
+                            <div className="flex gap-3">
+                              <button type="submit" className="underline">{t("desk.adjustApply")}</button>
+                              <button
+                                type="button"
+                                className="text-ash underline"
+                                onClick={() => {
+                                  setEditId(null);
+                                  setDelta("");
+                                  setRowError("");
+                                }}
+                              >
+                                {t("desk.adjustClose")}
+                              </button>
+                            </div>
+                            {rowError ? <p className="max-w-[12rem] text-xs text-danger">{rowError}</p> : null}
+                          </form>
+                        ) : (
+                          <button
+                            type="button"
+                            className="underline"
+                            onClick={() => {
+                              setEditId(row.id);
+                              setDelta("");
+                              setRowError("");
+                            }}
+                          >
+                            {t("desk.adjust")}
+                          </button>
+                        )
                       ) : null}
                     </td>
                   </tr>
