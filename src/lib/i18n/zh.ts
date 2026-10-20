@@ -132,7 +132,7 @@ export const zh = {
     material: "材质与养护",
     shipping: "配送",
     returns: "退换",
-    shippingBody: "标准配送 {{standard}}，满 {{threshold}} 免费。加急 {{express}}。有货的订单会在两个工作日内发出。",
+    shippingBody: "标准配送 {{standard}}，满 {{threshold}} 免费。加急 {{express}}。演示店不承诺发货日期。",
     returnsBody: "如果一件东西不合适，请在 14 天内写信给 {{email}}。穿过或洗过的衣物以修补为主，除非到货时已损坏。",
     alongside: "一起看",
   },

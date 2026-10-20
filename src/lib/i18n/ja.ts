@@ -132,7 +132,7 @@ export const ja = {
     material: "素材と手入れ",
     shipping: "配送",
     returns: "返品",
-    shippingBody: "通常配送は {{standard}}、{{threshold}} 以上で無料です。速達は {{express}}。在庫のある注文は2営業日以内に発送します。",
+    shippingBody: "通常配送は {{standard}}、{{threshold}} 以上で無料です。速達は {{express}}。このデモ店は発送日を約束しません。",
     returnsBody: "合わないときは 14 日以内に {{email}} へ書いてください。着用または洗濯したものは、到着時の破損を除き、返金より修理を先にします。",
     alongside: "あわせて",
   },

@@ -110,7 +110,7 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
             <Link to="/privacy" className="block">{t("nav.privacy")}</Link>
             <Link to="/refunds" className="block">{t("nav.refunds")}</Link>
             <LanguageSwitch />
-            <a href={`mailto:${chrome?.supportEmail || "studio@mu.example"}`} className="block">{chrome?.supportEmail || "studio@mu.example"}</a>
+            <a href={`mailto:${chrome?.supportEmail || "luckylynn230821@gmail.com"}`} className="block">{chrome?.supportEmail || "luckylynn230821@gmail.com"}</a>
           </div>
         </div>
       </footer>

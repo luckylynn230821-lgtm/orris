@@ -132,7 +132,7 @@ export const zhHant = {
     material: "材質與養護",
     shipping: "配送",
     returns: "退換",
-    shippingBody: "標準配送 {{standard}}，滿 {{threshold}} 免費。加急 {{express}}。有貨的訂單會在兩個工作日內發出。",
+    shippingBody: "標準配送 {{standard}}，滿 {{threshold}} 免費。加急 {{express}}。演示店不承諾發貨日期。",
     returnsBody: "如果一件東西不合適，請在 14 天內寫信給 {{email}}。穿過或洗過的衣物以修補為主，除非到貨時已損壞。",
     alongside: "一起看",
   },

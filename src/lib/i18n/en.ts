@@ -131,7 +131,7 @@ export const en = {
     shipping: "Shipping",
     returns: "Returns",
     shippingBody:
-      "Standard shipping is {{standard}}, and complimentary over {{threshold}}. Express is {{express}}. In-stock orders leave within two business days.",
+      "Standard shipping is {{standard}}, and complimentary over {{threshold}}. Express is {{express}}. This demonstration shop does not promise a ship date.",
     returnsBody:
       "Write to {{email}} within 14 days if a piece is not right. Worn or washed goods are repaired rather than refunded, unless they arrived damaged.",
     alongside: "Alongside it",

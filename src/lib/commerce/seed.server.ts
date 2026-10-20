@@ -23,6 +23,7 @@ export function ensureSeeded(): Promise<void> {
     );
     if (!existing[0]?.seeded) await seedAll(query);
     await upgradeStudio(query);
+    await dropShipPromise(query);
   })
     .then(() => undefined)
     .catch((error) => {
@@ -349,6 +350,31 @@ async function seedAll(query: Query) {
   await query("update store_settings set seeded = true, updated_at = now() where id = 1");
   const check = await query<{ n: number }>("select count(*)::int as n from orders");
   if (num(check[0]?.n) < 10) throw new Error("Sample catalog did not seed");
+}
+
+/** Replace the fake mailbox and the two-day shipping claim on a shop that already seeded. */
+async function dropShipPromise(query: Query) {
+  const rows = await query<{ support_email: string; benefits: unknown }>(
+    "select support_email, benefits from store_settings where id = 1",
+  );
+  const row = rows[0];
+  if (!row) return;
+  const raw = typeof row.benefits === "string" ? JSON.parse(row.benefits) : row.benefits;
+  const benefits = Array.isArray(raw) ? raw : [];
+  let changed = false;
+  const next = benefits.map((item) => {
+    if (!item || typeof item !== "object") return item;
+    const title = (item as { title?: string }).title;
+    if (title !== "Two-day dispatch") return item;
+    changed = true;
+    return SEED_SETTINGS.benefits[2];
+  });
+  const email = row.support_email === "studio@mu.example" ? SEED_SETTINGS.supportEmail : row.support_email;
+  if (!changed && email === row.support_email) return;
+  await query(
+    "update store_settings set support_email = $1, benefits = $2::jsonb, updated_at = now() where id = 1",
+    [email, JSON.stringify(next)],
+  );
 }
 
 /** One-way copy of the original house demo into the pet studio. Orders and on-hand counts stay. */

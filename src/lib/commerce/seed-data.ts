@@ -252,7 +252,7 @@ export const SEED_SETTINGS = {
   brandName: "MU",
   tagline: "A studio for the animals at home.",
   announcement: "Complimentary shipping on studio orders over $120",
-  supportEmail: "studio@mu.example",
+  supportEmail: "luckylynn230821@gmail.com",
   shippingFlatCents: 800,
   expressShippingCents: 1800,
   freeShippingThresholdCents: 12000,
@@ -275,7 +275,7 @@ export const SEED_SETTINGS = {
   benefits: [
     { title: "Objects, not costumes", body: "A bowl, a bed, a leash, a coat. Each one does one job. We do not print certifications this sample cannot support." },
     { title: "Labels, not breed charts", body: "Where a garment has a size, it is the label on the piece. Compare it with something your animal already wears." },
-    { title: "Two-day dispatch", body: "In-stock orders leave within two business days. You see that movement on the order, not on a fake tracking page." },
+    { title: "No ship-date promise", body: "This demonstration studio does not promise a delivery date. Nothing is sent until the desk records a shipment on the order." },
   ],
   editorial: {
     eyebrow: "Little joys",

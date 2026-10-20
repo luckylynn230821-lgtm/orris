@@ -132,7 +132,7 @@ export const ko = {
     material: "소재와 관리",
     shipping: "배송",
     returns: "반품",
-    shippingBody: "일반 배송은 {{standard}}, {{threshold}} 이상이면 무료입니다. 특송은 {{express}}. 재고가 있는 주문은 영업일 이틀 안에 나갑니다.",
+    shippingBody: "일반 배송은 {{standard}}, {{threshold}} 이상이면 무료입니다. 특송은 {{express}}. 이 시연 가게는 발송일을 약속하지 않습니다.",
     returnsBody: "맞지 않으면 14일 안에 {{email}}로 써 주세요. 입거나 세탁한 것은, 도착 당시 손상된 경우가 아니면 환불보다 수선을 먼저 합니다.",
     alongside: "함께",
   },
