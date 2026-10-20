@@ -1,6 +1,8 @@
 import { iso, num } from "@/lib/format";
 import { userError } from "./errors";
+import { demonstrationPaymentAllowed, orderProofAllows } from "./integrity";
 import { stageOf, type StageKey } from "./stages";
+import { releaseExpiredHolds } from "./checkout.server";
 import { ensureSeeded } from "./seed.server";
 import { withTx, type Query } from "./tx.server";
 
@@ -96,9 +98,13 @@ async function owned(query: Query, number: string, proof: Proof) {
   ]);
   const order = rows[0];
   if (!order) throw userError("err.missingOrder");
-  const tokenOk = Boolean(proof.token && proof.token === String(order.access_token));
-  const emailOk = Boolean(proof.email && proof.email.toLowerCase() === String(order.email).toLowerCase());
-  if (!tokenOk && !emailOk) throw userError("err.notYours");
+  const tokenOk = orderProofAllows({
+    orderToken: String(order.access_token),
+    token: proof.token,
+    sessionEmail: proof.email,
+    orderEmail: String(order.email),
+  });
+  if (!tokenOk) throw userError("err.notYours");
   return order;
 }
 
@@ -110,21 +116,20 @@ export async function viewOrder(input: {
 }) {
   await ensureSeeded();
   return withTx(async (query) => {
+    await releaseExpiredHolds(query);
     const number = input.number.trim().toUpperCase();
-    const email = input.email?.trim().toLowerCase() ?? "";
     const token = input.token?.trim() ?? "";
     const sessionEmail = input.sessionEmail?.trim().toLowerCase() ?? "";
-    if (!number || (!email && !token && !sessionEmail)) return null;
+    if (!number || (!token && !sessionEmail)) return null;
     const rows = await query<Record<string, unknown>>(
       `select * from orders
        where number = $1
          and (
            ($2 <> '' and access_token = $2)
            or ($3 <> '' and lower(email) = $3)
-           or ($4 <> '' and lower(email) = $4)
          )
        limit 1`,
-      [number, token, email, sessionEmail],
+      [number, token, sessionEmail],
     );
     if (!rows[0]) return null;
     return faceFor(query, String(rows[0].id), rows[0]);
@@ -156,10 +161,16 @@ export async function listMyOrders(userId: string) {
 export async function payOrder(number: string, proof: Proof) {
   await ensureSeeded();
   return withTx(async (query) => {
+    await releaseExpiredHolds(query);
     const order = await owned(query, number, proof);
-    if (String(order.payment_status) !== "unpaid") throw userError("err.notUnpaid");
+    if (String(order.status) === "cancelled" || String(order.payment_status) !== "unpaid") {
+      throw userError("err.notUnpaid");
+    }
+    if (!demonstrationPaymentAllowed(process.env.VERCEL_ENV)) throw userError("err.payNotLive");
     await query(
-      `update orders set status = 'paid', payment_status = 'paid' where id = $1`,
+      `update orders
+       set status = 'paid', payment_status = 'paid', payment_source = 'demonstration', stock_held = false
+       where id = $1`,
       [order.id],
     );
     await query(

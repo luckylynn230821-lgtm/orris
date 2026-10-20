@@ -41,8 +41,6 @@ export const roles = {
 
 export type DeskRole = keyof typeof roles;
 
-/** The parent account. Whoever opens the desk first does not become the owner. */
-export const FOUNDER_EMAIL = "luckylynn230821@gmail.com";
 export const STAFF_CAP = 10;
 
 type Request = Parameters<(typeof roles)["owner"]["authorize"]>[0];

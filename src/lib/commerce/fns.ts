@@ -253,7 +253,7 @@ export const adminAnalytics = createServerFn({ method: "POST" }).middleware([shi
     const { assertAdminThen } = await import("./admin.server");
     await assertAdminThen(context.userId);
     const { loadAnalytics } = await import("./analytics.server");
-    return loadAnalytics({ ...data, includeDemo: data.includeDemo !== false });
+    return loadAnalytics({ ...data, includeDemo: data.includeDemo === true });
   });
 
 export const adminProducts = createServerFn({ method: "GET" }).middleware([shieldRead])

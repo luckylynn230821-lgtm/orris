@@ -124,7 +124,7 @@ function ManagerOverview() {
 
 function MoneyOverview() {
   const [range, setRange] = useState<RangeKey>("30d");
-  const [includeDemo, setIncludeDemo] = useState(true);
+  const [includeDemo, setIncludeDemo] = useState(false);
   const { t } = useT();
   const { data, error, loading } = useAnalytics(range, includeDemo);
   const k = data?.kpis;

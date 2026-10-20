@@ -19,7 +19,7 @@ type Book = (typeof BOOKS)[number];
 
 function ReportsPage() {
   const [range, setRange] = useState<RangeKey>("30d");
-  const [includeDemo, setIncludeDemo] = useState(true);
+  const [includeDemo, setIncludeDemo] = useState(false);
   const [book, setBook] = useState<Book>("pnl");
   const { data, error, loading } = useAnalytics(range, includeDemo);
   const { t } = useT();

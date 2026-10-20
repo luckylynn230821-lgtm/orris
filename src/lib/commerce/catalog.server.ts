@@ -2,6 +2,7 @@ import { getSql, type Sql } from "@/lib/db";
 import type { CategoryCard, PublicImage, PublicProduct, PublicSettings, PublicVariant } from "./catalog";
 import { asJson, iso, num } from "@/lib/format";
 import { ensureSeeded } from "./seed.server";
+import { sweepExpiredHolds } from "./checkout.server";
 import { shippingQuote } from "./metrics";
 
 type ProductRow = {
@@ -205,6 +206,8 @@ async function unitsByProduct() {
     from order_items i
     join orders o on o.id = i.order_id
     where o.payment_status in ('paid', 'partially_refunded', 'refunded')
+      and o.is_demo = false
+      and coalesce(o.payment_source, 'none') <> 'demonstration'
       and i.product_id is not null
     group by i.product_id
   `;
@@ -222,6 +225,7 @@ export async function loadChrome() {
 }
 
 export async function loadHome() {
+  await sweepExpiredHolds();
   const [settings, products, categories, units] = await Promise.all([
     readSettings(),
     loadPublished(),
@@ -303,6 +307,7 @@ export async function loadShop(input: {
   max?: number;
   inStock?: boolean;
 }) {
+  await sweepExpiredHolds();
   const [settings, products, categories] = await Promise.all([
     readSettings(),
     loadPublished(),
@@ -459,19 +464,15 @@ export async function trackEvent(input: { productId: string; event: string; sess
   return { ok: true };
 }
 
-export async function loadOrderAccess(input: { number: string; email?: string; token?: string }) {
+export async function loadOrderAccess(input: { number: string; token?: string }) {
   const number = input.number.trim().toUpperCase();
-  const email = input.email?.trim().toLowerCase() ?? "";
   const token = input.token?.trim() ?? "";
-  if (!number || (!email && !token)) return null;
+  if (!number || !token) return null;
   const sql = await db();
   const orders = await sql<Record<string, unknown>>`
     select * from orders
     where number = ${number}
-      and (
-        (${token} <> '' and access_token = ${token})
-        or (${email} <> '' and email = ${email})
-      )
+      and access_token = ${token}
     limit 1
   `;
   const order = orders[0];

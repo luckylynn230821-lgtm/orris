@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin/analytics")({
 
 function AnalyticsPage() {
   const [range, setRange] = useState<RangeKey>("30d");
-  const [includeDemo, setIncludeDemo] = useState(true);
+  const [includeDemo, setIncludeDemo] = useState(false);
   const [sort, setSort] = useState<"net" | "units" | "profit" | "margin">("net");
   const { data, error, loading } = useAnalytics(range, includeDemo);
   const { t } = useT();

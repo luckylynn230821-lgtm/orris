@@ -19,10 +19,10 @@ export const Route = createFileRoute("/order/$number")({
 function OrderPage() {
   const { t } = useT();
   const { number } = Route.useParams();
-  const { token, email } = Route.useSearch();
+  const { token } = Route.useSearch();
   const [order, setOrder] = useState<CustomerOrder | null | undefined>(undefined);
   const [fresh, setFresh] = useState(false);
-  const load = () => lookupOrder({ data: { number, token, email } });
+  const load = () => lookupOrder({ data: { number, token } });
   useEffect(() => {
     let live = true;
     let previous = "";
@@ -40,7 +40,7 @@ function OrderPage() {
       live = false;
       clearInterval(timer);
     };
-  }, [number, token, email]);
+  }, [number, token]);
 
   return (
     <StoreShell>

@@ -30,7 +30,7 @@ async function logisticsCost(
        from fulfillments f
        join orders o on o.id = f.order_id
        where o.created_at >= $1 and o.created_at < $2
-         and ($3::boolean or o.is_demo = false)`,
+         and ($3::boolean or (o.is_demo = false and coalesce(o.payment_source, 'none') <> 'demonstration'))`,
       [start.toISOString(), end.toISOString(), includeDemo],
     );
     return num(rows[0]?.n);
@@ -59,7 +59,7 @@ export async function loadAnalytics(input: {
      left join products p on p.id = i.product_id
      left join categories c on c.id = p.category_id
      where o.created_at >= $1 and o.created_at < $2
-       and ($3::boolean or o.is_demo = false)`,
+       and ($3::boolean or (o.is_demo = false and coalesce(o.payment_source, 'none') <> 'demonstration'))`,
     [range.previousStart.toISOString(), range.end.toISOString(), input.includeDemo],
   );
 

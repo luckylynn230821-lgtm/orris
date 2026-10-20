@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin/intelligence")({
 
 function IntelligencePage() {
   const [range, setRange] = useState<RangeKey>("30d");
-  const [includeDemo, setIncludeDemo] = useState(true);
+  const [includeDemo, setIncludeDemo] = useState(false);
   const { data, error, loading } = useAnalytics(range, includeDemo);
   const { t, tx } = useT();
   const groups = ["replenishment", "slow_moving", "high_interest_low_conversion", "low_margin", "underperforming", "best_seller", "high_margin", "high_refund", "insufficient", "steady"];

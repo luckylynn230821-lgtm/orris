@@ -25,9 +25,9 @@ function LookupPage() {
             event.preventDefault();
             const form = new FormData(event.currentTarget);
             const number = String(form.get("number") || "");
-            const email = String(form.get("email") || "");
+            const token = String(form.get("token") || "");
             setError("");
-            void lookupOrder({ data: { number, email } }).then((order) => {
+            void lookupOrder({ data: { number, token } }).then((order) => {
               if (!order) {
                 setError(t("lookup.missing"));
                 return;
@@ -35,13 +35,13 @@ function LookupPage() {
               void navigate({
                 to: "/order/$number",
                 params: { number: order.number },
-                search: { email },
+                search: { token },
               });
             });
           }}
         >
           <Field label={t("lookup.number")} name="number" required placeholder="OR-18421" />
-          <Field label={t("lookup.email")} name="email" type="email" required />
+          <Field label={t("lookup.token")} name="token" required />
           {error ? <p className="text-sm text-danger">{error}</p> : null}
           <Button type="submit">{t("lookup.submit")}</Button>
         </form>

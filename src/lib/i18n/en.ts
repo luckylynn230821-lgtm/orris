@@ -81,7 +81,7 @@ export const en = {
     favorites: "In the studio",
     joys: "Little joys",
     chosen: "Often chosen",
-    chosenNote: "Ranked by paid units on these records, including earlier demonstration orders.",
+    chosenNote: "Ranked by paid units that are not demonstration orders. If none have sold that way yet, this row stays empty.",
     designed: "Designed for their world",
     mostKept: "Most kept",
     newIn: "New in the house",
@@ -247,18 +247,18 @@ export const en = {
   },
   lookup: {
     title: "Find an order",
-    body: "Enter the order number and the email used at checkout. One without the other is not enough.",
+    body: "Enter the order number and the private token from checkout. An email address alone is not enough. Signed-in customers can also open orders placed with their account email from Account.",
     number: "Order number",
-    email: "Email",
+    token: "Order token",
     submit: "Look up",
-    missing: "No order matches that number and email.",
+    missing: "No order matches that number and token.",
   },
   stage: {
     cancelled: { label: "Cancelled", detail: "This order is closed.", admin: "Cancelled" },
     aftersalesOpen: { label: "Refund / after-sales", detail: "The request is in. Waiting for the merchant.", admin: "After-sales to handle" },
     refunded: { label: "Refund / after-sales", detail: "This order has been refunded. The demonstration payment never charged a card.", admin: "Refunded" },
     partial: { label: "Refund / after-sales", detail: "A partial refund is on the books.", admin: "Partial refund" },
-    unpaid: { label: "To pay", detail: "Stock is reserved. Confirm the demonstration payment to move it to shipping. No card is charged.", admin: "To pay" },
+    unpaid: { label: "To pay", detail: "Stock is held for 30 minutes. Outside production you can confirm a demonstration payment. It does not charge a card. Production leaves the order unpaid.", admin: "To pay" },
     toreceive: { label: "To receive", detail: "Shipped, and on the way.", admin: "Shipped, in transit" },
     done: { label: "Complete", detail: "Received, and a review is on the order.", admin: "Complete" },
     doneDemo: { label: "Complete", detail: "A sample order, kept for the books only.", admin: "Complete" },
@@ -275,6 +275,7 @@ export const en = {
     accepted: "The studio has started on this order. It has not shipped yet.",
     refunded: "Refund recorded, {{amount}}. The customer order is now under refunds / after-sales.",
     cancelledUnpaid: "Unpaid order cancelled. Reserved stock was released.",
+    holdExpired: "The unpaid hold expired. Reserved stock was released, and the order was cancelled.",
     rejected: "The merchant did not accept this after-sales request.",
   },
   admin: {
@@ -736,6 +737,8 @@ export const en = {
     notOnDesk: "This shop already has an owner. Ask them to add your email on the team page.",
     ownerFixed: "The owner account cannot be changed here.",
     email: "Enter a real email address.",
+    payNotLive: "This shop does not take a real card payment yet. The order stays unpaid.",
+    image: "Upload a JPEG, PNG, or WebP image, under about 900 KB.",
   },
 } as const;
 

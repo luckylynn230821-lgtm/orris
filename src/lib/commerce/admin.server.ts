@@ -6,7 +6,8 @@ import { stageOf } from "./stages";
 import { faceFor } from "./customer.server";
 import { ensureSeeded } from "./seed.server";
 import { withTx } from "./tx.server";
-import { FOUNDER_EMAIL, STAFF_CAP, can, deskPermissions, type DeskRole, type PermissionRequest } from "./access";
+import { STAFF_CAP, can, deskPermissions, type DeskRole, type PermissionRequest } from "./access";
+import { acceptedImage, resolveOwnerEmail } from "./integrity";
 import { PUBLIC_CARRIERS, deliverMail, detectCarrier, trackingLink } from "./shipping";
 
 function asRole(role: string): DeskRole {
@@ -17,20 +18,23 @@ function asRole(role: string): DeskRole {
 
 async function reconcileFounder() {
   const sql = await getSql();
+  const settings = await sql<{ owner_email: string | null }>`select owner_email from store_settings where id = 1`;
+  const email = resolveOwnerEmail(settings[0]?.owner_email, process.env.OWNER_EMAIL, process.env.VERCEL_ENV === "production");
+  if (!email) return;
+  if (!settings[0]?.owner_email && process.env.OWNER_EMAIL?.trim()) {
+    await sql`update store_settings set owner_email = ${email} where id = 1 and owner_email is null`;
+  }
   const founders = await sql<{ id: string; name: string | null }>`
-    select id, name from "user" where lower(email) = ${FOUNDER_EMAIL}
+    select id, name from "user" where lower(email) = ${email}
   `;
   const founder = founders[0];
-  if (founder) {
-    await sql`update store_members set role = 'manager' where role = 'owner' and user_id <> ${founder.id}`;
-    await sql`
-      insert into store_members (user_id, role, email, name)
-      values (${founder.id}, 'owner', ${FOUNDER_EMAIL}, ${founder.name})
-      on conflict (user_id) do update set role = 'owner', email = ${FOUNDER_EMAIL}, name = ${founder.name}
-    `;
-    return;
-  }
-  await sql`update store_members set role = 'manager' where role = 'owner'`;
+  if (!founder) return;
+  await sql`update store_members set role = 'manager' where role = 'owner' and user_id <> ${founder.id}`;
+  await sql`
+    insert into store_members (user_id, role, email, name)
+    values (${founder.id}, 'owner', ${email}, ${founder.name})
+    on conflict (user_id) do update set role = 'owner', email = ${email}, name = ${founder.name}
+  `;
 }
 
 async function actor(userId: string) {
@@ -42,7 +46,9 @@ async function actor(userId: string) {
   await reconcileFounder();
   const members = await sql<{ user_id: string; role: string }>`select user_id, role from store_members`;
   if (members.length === 0) {
-    if (email !== FOUNDER_EMAIL) throw userError("err.notOnDesk");
+    const settings = await sql<{ owner_email: string | null }>`select owner_email from store_settings where id = 1`;
+    const owner = resolveOwnerEmail(settings[0]?.owner_email, process.env.OWNER_EMAIL, process.env.VERCEL_ENV === "production");
+    if (!owner || email !== owner) throw userError("err.notOnDesk");
     try {
       await sql`insert into store_members (user_id, role, email, name) values (${userId}, 'owner', ${email}, ${name})`;
       await sql`insert into audit_logs (actor_id, action, entity, entity_id, detail) values (${userId}, 'claim_store', 'store', '1', ${JSON.stringify({ email })}::jsonb)`;
@@ -333,14 +339,10 @@ export async function saveImage(
   await requireDesk(userId, { catalog: ["update"] });
   let url = input.url?.trim() ?? "";
   if (input.dataUrl) {
-    const match = /^data:image\/(jpeg|png|webp);base64,[a-z0-9+/=\s]+$/i.exec(input.dataUrl);
-    if (!match) throw userError("Use a JPEG, PNG or WebP image.");
-    if (input.dataUrl.length > 1_200_000) throw userError("Images must be under about 900KB.");
+    if (!acceptedImage(input.dataUrl)) throw userError("err.image");
     url = input.dataUrl;
   }
-  if (!url.startsWith("/catalog/") && !url.startsWith("data:image/")) {
-    throw userError("Use an uploaded image or an existing catalog image.");
-  }
+  if (!url.startsWith("/catalog/") && !url.startsWith("data:image/")) throw userError("err.image");
   const sql = await getSql();
   const pos = await sql<{ n: number }>`select coalesce(max(position), -1)::int as n from product_images where product_id = ${input.productId}`;
   const id = crypto.randomUUID();

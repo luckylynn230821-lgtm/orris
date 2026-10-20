@@ -1,8 +1,9 @@
 import { num } from "@/lib/format";
 import { userError } from "./errors";
+import { RESERVE_MINUTES, checkoutHitsAllowed } from "./integrity";
 import { shippingQuote } from "./metrics";
 import { ensureSeeded } from "./seed.server";
-import { withTx } from "./tx.server";
+import { withTx, type Query } from "./tx.server";
 
 export type CheckoutInput = {
   email: string;
@@ -17,23 +18,76 @@ export type CheckoutInput = {
   idempotencyKey: string;
 };
 
-const recent = new Map<string, number[]>();
+export async function releaseExpiredHolds(query: Query) {
+  const due = await query<{ id: string; number: string }>(
+    `select id, number from orders
+     where stock_held = true
+       and payment_status = 'unpaid'
+       and reserve_until is not null
+       and reserve_until <= now()
+     for update`,
+  );
+  for (const order of due) {
+    const closed = await query<{ id: string }>(
+      `update orders
+       set stock_held = false, status = 'cancelled', fulfillment_status = 'cancelled'
+       where id = $1 and stock_held = true and payment_status = 'unpaid'
+       returning id`,
+      [order.id],
+    );
+    if (!closed[0]) continue;
+    const items = await query<{ variant_id: string; qty: number }>(
+      `select variant_id, qty from order_items where order_id = $1`,
+      [order.id],
+    );
+    for (const item of items) {
+      await query(`update product_variants set inventory_qty = inventory_qty + $1 where id = $2`, [
+        item.qty,
+        item.variant_id,
+      ]);
+      await query(
+        `insert into inventory_movements (id, variant_id, qty_delta, reason, reference, note)
+         values ($1, $2, $3, 'release', $4, $5)`,
+        [crypto.randomUUID(), item.variant_id, item.qty, order.number, "Unpaid hold expired"],
+      );
+    }
+    await query(`insert into order_events (id, order_id, message) values ($1, $2, $3)`, [
+      crypto.randomUUID(),
+      order.id,
+      "event.holdExpired",
+    ]);
+  }
+}
 
-function allow(email: string) {
-  const now = Date.now();
-  const stamps = (recent.get(email) ?? []).filter((stamp) => now - stamp < 10 * 60_000);
-  if (stamps.length >= 8) return false;
-  stamps.push(now);
-  recent.set(email, stamps);
-  return true;
+async function allowCheckout(query: Query, email: string) {
+  const rows = await query<{ hits: number }>(
+    `insert into rate_buckets (bucket, hits, window_start)
+     values ($1, 1, now())
+     on conflict (bucket) do update set
+       hits = case
+         when rate_buckets.window_start < now() - interval '10 minutes' then 1
+         else rate_buckets.hits + 1
+       end,
+       window_start = case
+         when rate_buckets.window_start < now() - interval '10 minutes' then now()
+         else rate_buckets.window_start
+       end
+     returning hits`,
+    [`checkout:${email}`],
+  );
+  return checkoutHitsAllowed(num(rows[0]?.hits));
+}
+
+export async function sweepExpiredHolds() {
+  await withTx((query) => releaseExpiredHolds(query));
 }
 
 export async function placeOrder(input: CheckoutInput, userId: string | null) {
   await ensureSeeded();
   const email = input.email.trim().toLowerCase();
-  if (!allow(email)) throw userError("err.rate");
 
   return withTx(async (query) => {
+    await releaseExpiredHolds(query);
     const existing = await query<{ number: string; access_token: string }>(
       "select number, access_token from orders where idempotency_key = $1",
       [input.idempotencyKey],
@@ -41,6 +95,7 @@ export async function placeOrder(input: CheckoutInput, userId: string | null) {
     if (existing[0]) {
       return { number: existing[0].number, token: existing[0].access_token, replayed: true };
     }
+    if (!(await allowCheckout(query, email))) throw userError("err.rate");
 
     const settingsRows = await query<Record<string, unknown>>(
       "select shipping_flat_cents, express_shipping_cents, free_shipping_threshold_cents, currency from store_settings where id = 1",
@@ -150,9 +205,10 @@ export async function placeOrder(input: CheckoutInput, userId: string | null) {
         id, number, access_token, idempotency_key, customer_id, email, customer_name,
         status, payment_status, fulfillment_status, subtotal_cents, discount_cents,
         shipping_cents, tax_cents, total_cents, refunded_cents, currency, shipping_method,
-        shipping_address, is_demo
+        shipping_address, is_demo, stock_held, reserve_until, payment_source
       ) values (
-        $1,$2,$3,$4,$5,$6,$7,'pending','unpaid','unfulfilled',$8,$9,$10,$11,$12,0,$13,$14,$15::jsonb,false
+        $1,$2,$3,$4,$5,$6,$7,'pending','unpaid','unfulfilled',$8,$9,$10,$11,$12,0,$13,$14,$15::jsonb,false,
+        true, now() + make_interval(mins => $16::int), 'none'
       )`,
       [
         orderId,
@@ -170,6 +226,7 @@ export async function placeOrder(input: CheckoutInput, userId: string | null) {
         String(settings.currency ?? "USD"),
         input.shippingMethod,
         JSON.stringify(address),
+        RESERVE_MINUTES,
       ],
     );
 
@@ -206,7 +263,7 @@ export async function placeOrder(input: CheckoutInput, userId: string | null) {
       );
       await query(
         `insert into product_events (product_id, event, session_key, qty, occurred_on, is_demo)
-         values ($1, 'purchase', $2, $3, (now() at time zone 'utc')::date, false)
+         values ($1, 'purchase', $2, $3, (now() at time zone 'utc')::date, true)
          on conflict (product_id, event, session_key, occurred_on) do nothing`,
         [line.productId, `live-${input.idempotencyKey}`, line.qty],
       );
