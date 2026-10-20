@@ -34,6 +34,10 @@ function blankVariant(): VariantDraft {
 function Editor() {
   const { id } = Route.useParams();
   const { t, tx } = useT();
+  const tRef = useRef(t);
+  const txRef = useRef(tx);
+  tRef.current = t;
+  txRef.current = tx;
   const seeCost = useDeskAccess()?.permissions.money ?? false;
   const seeStock = useDeskAccess()?.permissions.inventory ?? false;
   const navigate = useNavigate();
@@ -87,13 +91,13 @@ function Editor() {
   useEffect(() => {
     void adminProducts().then((catalog) => {
       setCategories(catalog.categories);
-      if (!categoryId && catalog.categories[0]) setCategoryId(catalog.categories[0].id);
+      setCategoryId((current) => current || catalog.categories[0]?.id || current);
     });
     if (id === "new") return;
     void adminGetProduct({ data: { id } })
       .then((product) => {
         if (!product) {
-          setError(t("desk.notFoundProduct"));
+          setError(tRef.current("desk.notFoundProduct"));
           return;
         }
         setName(product.name);
@@ -122,7 +126,7 @@ function Editor() {
           })),
         );
       })
-      .catch((err: unknown) => setError(err instanceof Error ? localize(err.message, tx) : t("admin.failed")));
+      .catch((err: unknown) => setError(err instanceof Error ? localize(err.message, txRef.current) : tRef.current("admin.failed")));
   }, [id]);
 
   return (

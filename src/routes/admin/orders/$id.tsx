@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button, Field } from "@/components/ui";
 import { useDeskAccess } from "@/components/admin/frame";
@@ -23,17 +23,17 @@ function OrderDesk() {
   const [ready, setReady] = useState(false);
   const [carriers, setCarriers] = useState<Awaited<ReturnType<typeof adminCarriers>>["carriers"]>([]);
   const [carrierId, setCarrierId] = useState("");
-  const load = () => {
+  const load = useCallback(() => {
     void adminOrder({ data: { id } }).then((value) => {
       setOrder(value);
       setReady(true);
     });
-  };
+  }, [id]);
   useEffect(() => {
     load();
     const timer = setInterval(load, 4000);
     return () => clearInterval(timer);
-  }, [id]);
+  }, [load]);
   useEffect(() => {
     if (!access?.permissions.fulfill) return;
     void adminCarriers().then((value) => setCarriers(value.carriers)).catch(() => setCarriers([]));

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AdminError, useDeskAccess } from "@/components/admin/frame";
 import { adminBulk, adminImport, adminProducts } from "@/lib/commerce/fns";
@@ -14,17 +14,23 @@ export const Route = createFileRoute("/admin/products/")({
 
 function ProductsPage() {
   const { t, tx } = useT();
+  const tRef = useRef(t);
+  const txRef = useRef(tx);
+  tRef.current = t;
+  txRef.current = tx;
   const seeStock = useDeskAccess()?.permissions.inventory ?? false;
   const [data, setData] = useState<Awaited<ReturnType<typeof adminProducts>> | null>(null);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [q, setQ] = useState("");
-  const load = () => {
+  const load = useCallback(() => {
     void adminProducts()
       .then(setData)
-      .catch((err: unknown) => setError(err instanceof Error ? localize(err.message, tx) : t("admin.failed")));
-  };
-  useEffect(load, []);
+      .catch((err: unknown) => setError(err instanceof Error ? localize(err.message, txRef.current) : tRef.current("admin.failed")));
+  }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
   const products = (data?.products ?? []).filter((product) => product.name.toLowerCase().includes(q.toLowerCase()));
   const notice = { ok: t("desk.updated"), fail: t("admin.failed") };
   return (

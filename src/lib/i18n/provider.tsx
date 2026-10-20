@@ -1,5 +1,5 @@
 import { createInstance, type i18n as I18n } from "i18next";
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { I18nextProvider, initReactI18next, useTranslation } from "react-i18next";
 import { catalogs, type MessageKey } from "./translate";
 import { phrase } from "./phrases";
@@ -60,14 +60,19 @@ export function I18nProvider({ initial, children }: { initial: Locale; children:
   );
 }
 
+// Shared with every page. Fast Refresh still reloads this module with the provider.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useT() {
   const { t } = useTranslation();
   const { locale, setLocale } = useContext(LocaleContext);
-  return {
-    locale,
-    setLocale,
-    t: (key: MessageKey, vars?: Record<string, string | number>) => String(t(key, vars)),
-    tx: (key: string, vars?: Record<string, string | number>) => String(t(key, vars)),
-    copy: (text: string) => phrase(locale, text),
-  };
+  const translate = useCallback(
+    (key: MessageKey, vars?: Record<string, string | number>) => String(t(key, vars)),
+    [t],
+  );
+  const tx = useCallback(
+    (key: string, vars?: Record<string, string | number>) => String(t(key, vars)),
+    [t],
+  );
+  const copy = useCallback((text: string) => phrase(locale, text), [locale]);
+  return { locale, setLocale, t: translate, tx, copy };
 }

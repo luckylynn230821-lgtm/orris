@@ -27,6 +27,13 @@
 
 无法在生产执行的项目没有写成 PASS。
 
+## 补记（类型检查和 Lint）
+
+上表 9c、9d 是验收当时的结果，保留不改。随后只修了类型和 Lint，没有改下单、付款、库存或报表口径，也没有写生产库。
+
+- `npx tsc --noEmit` 退出码 0。PGLite 读出的字节先复制成 `Uint8Array<ArrayBuffer>`，再交给 `Blob` 和 `WebAssembly.compile`。
+- `npx eslint .` 退出码 0，0 error、0 warning。空 `catch` 写明了回退为原始 token 的哈希。列表加载不再把每次渲染都变的翻译函数放进依赖，避免语言切换时重拉正在编辑的商品或重置轮询。
+
 ## 生产部署
 
 | 项 | 值 |

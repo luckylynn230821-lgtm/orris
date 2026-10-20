@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AdminError } from "@/components/admin/frame";
 import { Button, Field } from "@/components/ui";
@@ -17,18 +17,21 @@ type Team = Awaited<ReturnType<typeof adminTeam>>;
 
 function TeamPage() {
   const { t, tx } = useT();
+  const tRef = useRef(t);
+  const txRef = useRef(tx);
+  tRef.current = t;
+  txRef.current = tx;
   const [data, setData] = useState<Team | null>(null);
   const [error, setError] = useState("");
   const [role, setRole] = useState<"manager" | "staff">("staff");
-  const load = () => {
+  useEffect(() => {
     void adminTeam()
       .then((value) => {
         setData(value);
         setError("");
       })
-      .catch((err: unknown) => setError(err instanceof Error ? localize(err.message, tx) : t("admin.failed")));
-  };
-  useEffect(load, [tx]);
+      .catch((err: unknown) => setError(err instanceof Error ? localize(err.message, txRef.current) : tRef.current("admin.failed")));
+  }, []);
   const label = (value: string) => t(`admin.role${value[0]?.toUpperCase()}${value.slice(1)}` as MessageKey);
 
   return (

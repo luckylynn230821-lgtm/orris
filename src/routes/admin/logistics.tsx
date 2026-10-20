@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useDeskAccess } from "@/components/admin/frame";
 import { Button, Field } from "@/components/ui";
@@ -20,6 +20,10 @@ const blank: Draft = { name: "", trackingUrl: "", cost: "0.00" };
 
 function LogisticsPage() {
   const { t, tx } = useT();
+  const tRef = useRef(t);
+  const txRef = useRef(tx);
+  tRef.current = t;
+  txRef.current = tx;
   const access = useDeskAccess();
   const seeCost = access?.permissions.money ?? false;
   const canEdit = access?.permissions.settings ?? false;
@@ -27,12 +31,11 @@ function LogisticsPage() {
   const [draft, setDraft] = useState<Draft>(blank);
   const [number, setNumber] = useState("");
   const [hit, setHit] = useState<LiveTracking | null>(null);
-  const load = () => {
+  useEffect(() => {
     void adminCarriers()
       .then((value) => setRows(value.carriers))
-      .catch((err: unknown) => toast(err instanceof Error ? localize(err.message, tx) : t("admin.failed")));
-  };
-  useEffect(load, []);
+      .catch((err: unknown) => toast(err instanceof Error ? localize(err.message, txRef.current) : tRef.current("admin.failed")));
+  }, []);
   return (
     <div className="max-w-3xl">
       <h1 className="text-4xl">{t("desk.logisticsTitle")}</h1>

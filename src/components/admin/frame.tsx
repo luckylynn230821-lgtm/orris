@@ -13,7 +13,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { DeskLoading } from "@/components/loading-screen";
 import { LanguageSwitch } from "@/components/language-switch";
 import { signIn } from "@/lib/auth/client";
@@ -28,6 +28,7 @@ import type { MessageKey } from "@/lib/i18n/translate";
 
 type Desk = Awaited<ReturnType<typeof adminSession>>;
 const DeskContext = createContext<Desk | null>(null);
+// eslint-disable-next-line react-refresh/only-export-components -- desk pages read this from the frame
 export function useDeskAccess() {
   return useContext(DeskContext);
 }
@@ -63,24 +64,28 @@ const GUARDS: { prefix: string; permission: keyof Desk["permissions"] }[] = [
 
 export function AdminFrame({ children }: { children: ReactNode }) {
   const { t, tx } = useT();
+  const tRef = useRef(t);
+  const txRef = useRef(tx);
+  tRef.current = t;
+  txRef.current = tx;
   const { user, isPending } = useCurrentUserState();
   const path = useRouterState({ select: (state) => state.location.pathname });
   const [access, setAccess] = useState<Desk | null>(null);
   const [sessionError, setSessionError] = useState("");
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
     let live = true;
     void adminSession()
       .then((value) => {
         if (live) setAccess(value);
       })
       .catch((err: unknown) => {
-        if (live) setSessionError(err instanceof Error ? localize(err.message, tx) : t("admin.failed"));
+        if (live) setSessionError(err instanceof Error ? localize(err.message, txRef.current) : tRef.current("admin.failed"));
       });
     return () => {
       live = false;
     };
-  }, [user?.id, tx]);
+  }, [user?.id]);
   if (isPending || (user && !access && !sessionError)) {
     return <DeskLoading />;
   }

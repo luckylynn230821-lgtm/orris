@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CustomerOrderCard, type CustomerOrder } from "@/components/store/customer-order";
 import { StoreShell } from "@/components/store/shell";
 import { lookupOrder } from "@/lib/commerce/fns";
@@ -22,7 +22,7 @@ function OrderPage() {
   const { token } = Route.useSearch();
   const [order, setOrder] = useState<CustomerOrder | null | undefined>(undefined);
   const [fresh, setFresh] = useState(false);
-  const load = () => lookupOrder({ data: { number, token } });
+  const load = useCallback(() => lookupOrder({ data: { number, token } }), [number, token]);
   useEffect(() => {
     let live = true;
     let previous = "";
@@ -40,7 +40,7 @@ function OrderPage() {
       live = false;
       clearInterval(timer);
     };
-  }, [number, token]);
+  }, [load]);
 
   return (
     <StoreShell>

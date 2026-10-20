@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useDeskAccess } from "@/components/admin/frame";
 import { adminAccept, adminAcceptMany, adminCarriers, adminFulfill, adminOrders } from "@/lib/commerce/fns";
@@ -28,9 +28,9 @@ function OrdersPage() {
   const [shipId, setShipId] = useState<string | null>(null);
   const [carrierId, setCarrierId] = useState("");
   const [tracking, setTracking] = useState("");
-  const reload = () => {
+  const reload = useCallback(() => {
     void adminOrders({ data: { q } }).then(setRows).catch(() => setRows([]));
-  };
+  }, [q]);
   useEffect(() => {
     const handle = setTimeout(reload, 200);
     const timer = setInterval(reload, 4000);
@@ -38,7 +38,7 @@ function OrdersPage() {
       clearTimeout(handle);
       clearInterval(timer);
     };
-  }, [q]);
+  }, [reload]);
   useEffect(() => {
     if (!canFulfill) return;
     void adminCarriers().then((value) => setCarriers(value.carriers)).catch(() => setCarriers([]));

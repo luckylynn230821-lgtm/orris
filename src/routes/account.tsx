@@ -23,7 +23,7 @@ function AccountPage() {
   const [orders, setOrders] = useState<CustomerOrder[] | null>(null);
   const [fresh, setFresh] = useState(false);
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
     let live = true;
     let previous = "";
     const tick = () =>

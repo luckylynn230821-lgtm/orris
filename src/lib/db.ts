@@ -105,16 +105,23 @@ function createNeonSql(): Promise<Sql> {
   return globalRef.__pgSqlPromise__;
 }
 
-async function pgliteAsset(name: "pglite.data" | "pglite.wasm" | "initdb.wasm"): Promise<Uint8Array> {
+/** Node `readFileSync` is `Uint8Array<ArrayBufferLike>`. TS 5.7 will not pass that to `Blob` or `WebAssembly.compile` because the buffer might be a SharedArrayBuffer. */
+function ownedBytes(data: Uint8Array): Uint8Array<ArrayBuffer> {
+  const copy = new Uint8Array(data.byteLength);
+  copy.set(data);
+  return copy;
+}
+
+async function pgliteAsset(name: "pglite.data" | "pglite.wasm" | "initdb.wasm"): Promise<Uint8Array<ArrayBuffer>> {
   const { existsSync, readFileSync } = await import("node:fs");
   const { createRequire } = await import("node:module");
   const { dirname, join } = await import("node:path");
   // Copied next to the Vercel function. The bundled `new URL("./pglite.data")`
   // path looks in /var/task/_libs and the file is not emitted there.
   const packed = join(process.cwd(), "pglite", name);
-  if (existsSync(packed)) return readFileSync(packed);
+  if (existsSync(packed)) return ownedBytes(readFileSync(packed));
   const nodeRequire = createRequire(import.meta.url);
-  return readFileSync(join(dirname(nodeRequire.resolve("@electric-sql/pglite")), name));
+  return ownedBytes(readFileSync(join(dirname(nodeRequire.resolve("@electric-sql/pglite")), name)));
 }
 
 async function createPgliteSql(): Promise<Sql> {

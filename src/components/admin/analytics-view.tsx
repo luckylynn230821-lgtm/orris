@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { adminAnalytics } from "@/lib/commerce/fns";
 import { useT } from "@/lib/i18n/provider";
 import type { MessageKey } from "@/lib/i18n/translate";
@@ -6,8 +6,12 @@ import type { RangeKey } from "@/lib/commerce/metrics";
 
 const RANGE_IDS: RangeKey[] = ["today", "yesterday", "7d", "30d", "month", "last_month", "year"];
 
+// The range bar and this loader stay together. Moving the hook would not change the fetch.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAnalytics(range: RangeKey, includeDemo: boolean) {
   const { tx } = useT();
+  const txRef = useRef(tx);
+  txRef.current = tx;
   const [data, setData] = useState<Awaited<ReturnType<typeof adminAnalytics>> | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -22,7 +26,7 @@ export function useAnalytics(range: RangeKey, includeDemo: boolean) {
       })
       .catch((err: unknown) => {
         if (!live) return;
-        setError(err instanceof Error ? tx(err.message) : tx("admin.booksFailed"));
+        setError(err instanceof Error ? txRef.current(err.message) : txRef.current("admin.booksFailed"));
       })
       .finally(() => live && setLoading(false));
     return () => {
