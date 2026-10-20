@@ -5,7 +5,12 @@ export const Route = createFileRoute("/api/auth/$")({
   server: {
     handlers: {
       GET: ({ request }) => auth.handler(request),
-      POST: ({ request }) => auth.handler(request),
+      POST: async ({ request }) => {
+        const { guardAuthRequest } = await import("@/lib/shield.server");
+        const denied = guardAuthRequest(request);
+        if (denied) return denied;
+        return auth.handler(request);
+      },
     },
   },
 });

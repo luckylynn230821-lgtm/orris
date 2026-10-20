@@ -717,6 +717,7 @@ export const en = {
     serviceUnpaid: "It is not paid yet. You can wait for it to be cancelled instead of opening after-sales.",
     serviceOpen: "There is already an after-sales request in progress.",
     rate: "Too many checkout attempts. Wait a few minutes and try again.",
+    busy: "Too many requests at once. Wait a moment and try again.",
     settings: "Shop settings are missing.",
     notForSale: "A piece in your bag is no longer for sale.",
     qtyCap: "You can order up to 10 of each piece at a time.",

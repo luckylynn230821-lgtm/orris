@@ -715,6 +715,7 @@ export const zhHant = {
     serviceUnpaid: "還未付款，可以直接等訂單取消，不必申請售後。",
     serviceOpen: "已經有一條正在處理的售後。",
     rate: "結帳嘗試太多。請等幾分鐘再試。",
+    busy: "同一時間的請求太多。請稍等再試。",
     settings: "店鋪設定缺失。",
     notForSale: "購物袋裡有一件已不再出售。",
     qtyCap: "每一件一次最多購買 10 個。",

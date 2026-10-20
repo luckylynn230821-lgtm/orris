@@ -715,6 +715,7 @@ export const zh = {
     serviceUnpaid: "还未付款，可以直接等订单取消，不必申请售后。",
     serviceOpen: "已经有一条正在处理的售后。",
     rate: "结账尝试太多。请等几分钟再试。",
+    busy: "同一时间的请求太多。请稍等再试。",
     settings: "店铺设置缺失。",
     notForSale: "购物袋里有一件已不再出售。",
     qtyCap: "每一件一次最多购买 10 个。",
