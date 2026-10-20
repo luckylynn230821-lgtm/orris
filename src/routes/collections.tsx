@@ -10,7 +10,7 @@ export const Route = createFileRoute("/collections")({
   head: ({ loaderData }) => ({
     meta: [
       { title: `Collections — ${loaderData?.settings.brandName ?? "MU"}` },
-      { name: "description", content: "Six collections: rest, wear, feed, care, walk, and play." },
+      { name: "description", content: "Six collections of hard goods: rest, wear, feed, care, walk, and play. No food, medicine, or plugged-in devices." },
     ],
   }),
   component: CollectionsPage,

@@ -31,12 +31,12 @@ export type SeedProduct = {
 };
 
 export const SEED_CATEGORIES = [
-  { id: "cat_textiles", name: "Rest", slug: "rest", description: "Beds for the room you are already in.", sort: 1 },
-  { id: "cat_apparel", name: "Wear", slug: "wear", description: "Coats and knits with garment labels, not breed charts.", sort: 2 },
-  { id: "cat_ceramic", name: "Feed", slug: "feed", description: "Bowls with a wide foot.", sort: 3 },
-  { id: "cat_scent", name: "Care", slug: "care", description: "Everyday grooming. Nothing medical.", sort: 4 },
-  { id: "cat_leather", name: "Walk", slug: "walk", description: "A leash and a carry tote for animals who already know the routine.", sort: 5 },
-  { id: "cat_objects", name: "Play", slug: "play", description: "One toy, meant to be thrown and put away.", sort: 6 },
+  { id: "cat_textiles", name: "Rest", slug: "rest", description: "A bed for a nap in the room you are already in. Not a heated pad.", sort: 1 },
+  { id: "cat_apparel", name: "Wear", slug: "wear", description: "Coats and knits. No lights and no batteries.", sort: 2 },
+  { id: "cat_ceramic", name: "Feed", slug: "feed", description: "Bowls for meals and water. Not a diet, and not a machine.", sort: 3 },
+  { id: "cat_scent", name: "Care", slug: "care", description: "A brush for everyday grooming. Not medicine.", sort: 4 },
+  { id: "cat_leather", name: "Walk", slug: "walk", description: "A leash and a carry tote. No tracker.", sort: 5 },
+  { id: "cat_objects", name: "Play", slug: "play", description: "One toy, meant to be thrown and put away. No battery.", sort: 6 },
 ];
 
 const single = (
@@ -276,6 +276,7 @@ export const SEED_SETTINGS = {
     { title: "Objects, not costumes", body: "A bowl, a bed, a leash, a coat. Each one does one job. We do not print certifications this sample cannot support." },
     { title: "Labels, not breed charts", body: "Where a garment has a size, it is the label on the piece. Compare it with something your animal already wears." },
     { title: "No ship-date promise", body: "This demonstration studio does not promise a delivery date. Nothing is sent until the desk records a shipment on the order." },
+    { title: "Hard goods only", body: "No food, no supplements, no medicine, and no live animals. Nothing on this floor is plugged in." },
   ],
   editorial: {
     eyebrow: "Little joys",

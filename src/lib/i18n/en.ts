@@ -166,6 +166,7 @@ export const en = {
     p1: "MU is a demonstration studio for dogs and cats: bowls, a leash, a bed, clothing and a brush. The name is a setting, so it can be replaced. Prices, stock and orders on this site come from one set of books, not a pasted catalogue.",
     p2: "Checkout is a demonstration rail. It checks price and stock on the server, writes an order and an inventory movement, and never pretends a card was charged. A live card processor can replace that rail without changing the books.",
     p3: "The owner is luckylynn230821@gmail.com. Opening the desk first does not make someone the owner. The owner can add ten more people, as managers or as staff. Everyone else can browse, and can see only their own orders when they are signed in. Cost, margin and other customers stay off the public pages. Photography for this studio was made for the template. The name still needs a trademark search before a real launch.",
+    p4: "This template leaves out food, treats, supplements, medicine, live animals, and plugged-in devices. Those need licenses, cold storage, or after-sales this sample does not have.",
     cta: "Shop the studio",
   },
   login: {

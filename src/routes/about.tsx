@@ -26,6 +26,7 @@ function AboutPage() {
           <p>{t("about.p1")}</p>
           <p>{t("about.p2")}</p>
           <p>{t("about.p3")}</p>
+          <p>{t("about.p4")}</p>
         </div>
         <Link to="/shop" className="mt-8 inline-flex h-12 items-center rounded-full bg-coral px-6 text-sm text-ink">{t("about.cta")}</Link>
       </main>
