@@ -1,7 +1,14 @@
+import { randomBytes } from "node:crypto";
+import { GROK_PROVIDERS } from "../auth/providers.ts";
+
 /** Rules the order desk can test without a database. */
 
 export const RESERVE_MINUTES = 30;
 export const CHECKOUT_LIMIT = 8;
+
+const GOOGLE_PROVIDER_IDS = GROK_PROVIDERS.filter((provider) => provider.idp === "google").map(
+  (provider) => provider.providerId,
+);
 
 export function orderProofAllows(input: {
   orderToken: string;
@@ -18,6 +25,16 @@ export function orderProofAllows(input: {
 /** A typed email is not a secret. Only a checkout token or a signed-in session counts. */
 export function guestEmailIsNotProof(): boolean {
   return true;
+}
+
+/** 32 cryptographically random bytes. Never a seed-token-* value. */
+export function mintOrderToken(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+/** The pattern that was published in source, tests, and the first gate report. */
+export function isRetiredSeedToken(token: string): boolean {
+  return /^seed-token-[0-9]+$/.test(token.trim());
 }
 
 export function demonstrationPaymentAllowed(vercelEnv: string | undefined): boolean {
@@ -60,6 +77,15 @@ export function resolveOwnerEmail(
   if (fromEnv) return fromEnv;
   if (!production) return "luckylynn230821@gmail.com";
   return null;
+}
+
+/**
+ * Owner authority requires a verified Google sign-in.
+ * An unverified flag, an email/password row, or an X identity is not enough.
+ */
+export function ownerMayBind(emailVerified: boolean, providerIds: readonly string[]): boolean {
+  if (emailVerified !== true) return false;
+  return providerIds.some((id) => GOOGLE_PROVIDER_IDS.includes(id));
 }
 
 export function acceptedImage(dataUrl: string): boolean {

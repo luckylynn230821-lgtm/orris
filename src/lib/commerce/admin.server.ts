@@ -7,13 +7,19 @@ import { faceFor } from "./customer.server";
 import { ensureSeeded } from "./seed.server";
 import { withTx } from "./tx.server";
 import { STAFF_CAP, can, deskPermissions, type DeskRole, type PermissionRequest } from "./access";
-import { acceptedImage, resolveOwnerEmail } from "./integrity";
+import { acceptedImage, ownerMayBind, resolveOwnerEmail } from "./integrity";
 import { PUBLIC_CARRIERS, deliverMail, detectCarrier, trackingLink } from "./shipping";
 
 function asRole(role: string): DeskRole {
   if (role === "owner" || role === "administrator") return "owner";
   if (role === "manager" || role === "staff") return role;
   throw userError("err.forbidden");
+}
+
+async function providerIds(userId: string) {
+  const sql = await getSql();
+  const rows = await sql<{ providerId: string }>`select "providerId" as "providerId" from account where "userId" = ${userId}`;
+  return rows.map((row) => row.providerId);
 }
 
 async function reconcileFounder() {
@@ -24,11 +30,11 @@ async function reconcileFounder() {
   if (!settings[0]?.owner_email && process.env.OWNER_EMAIL?.trim()) {
     await sql`update store_settings set owner_email = ${email} where id = 1 and owner_email is null`;
   }
-  const founders = await sql<{ id: string; name: string | null }>`
-    select id, name from "user" where lower(email) = ${email}
+  const founders = await sql<{ id: string; name: string | null; verified: boolean }>`
+    select id, name, "emailVerified" as verified from "user" where lower(email) = ${email}
   `;
   const founder = founders[0];
-  if (!founder) return;
+  if (!founder || !ownerMayBind(Boolean(founder.verified), await providerIds(founder.id))) return;
   await sql`update store_members set role = 'manager' where role = 'owner' and user_id <> ${founder.id}`;
   await sql`
     insert into store_members (user_id, role, email, name)
@@ -40,7 +46,9 @@ async function reconcileFounder() {
 async function actor(userId: string) {
   await ensureSeeded();
   const sql = await getSql();
-  const people = await sql<{ email: string; name: string }>`select email, name from "user" where id = ${userId}`;
+  const people = await sql<{ email: string; name: string; verified: boolean }>`
+    select email, name, "emailVerified" as verified from "user" where id = ${userId}
+  `;
   const email = people[0]?.email?.trim().toLowerCase() ?? null;
   const name = people[0]?.name ?? null;
   await reconcileFounder();
@@ -48,7 +56,11 @@ async function actor(userId: string) {
   if (members.length === 0) {
     const settings = await sql<{ owner_email: string | null }>`select owner_email from store_settings where id = 1`;
     const owner = resolveOwnerEmail(settings[0]?.owner_email, process.env.OWNER_EMAIL, process.env.VERCEL_ENV === "production");
-    if (!owner || email !== owner) throw userError("err.notOnDesk");
+    const verifiedOwner =
+      Boolean(owner) &&
+      email === owner &&
+      ownerMayBind(Boolean(people[0]?.verified), await providerIds(userId));
+    if (!verifiedOwner) throw userError("err.notOnDesk");
     try {
       await sql`insert into store_members (user_id, role, email, name) values (${userId}, 'owner', ${email}, ${name})`;
       await sql`insert into audit_logs (actor_id, action, entity, entity_id, detail) values (${userId}, 'claim_store', 'store', '1', ${JSON.stringify({ email })}::jsonb)`;

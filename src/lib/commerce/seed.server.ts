@@ -1,3 +1,4 @@
+import { mintOrderToken } from "./integrity";
 import { num } from "@/lib/format";
 import { SEED_CATEGORIES, SEED_PEOPLE, SEED_PRODUCTS, SEED_SETTINGS } from "./seed-data";
 import type { Query } from "./tx.server";
@@ -234,7 +235,7 @@ async function seedAll(query: Query) {
         [
           orderId,
           number,
-          `seed-token-${orderIndex}`,
+          mintOrderToken(),
           customerIds[person],
           SEED_PEOPLE[person]![1],
           SEED_PEOPLE[person]![0],

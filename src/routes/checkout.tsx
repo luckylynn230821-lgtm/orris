@@ -4,6 +4,7 @@ import { StoreShell } from "@/components/store/shell";
 import { Button, Field } from "@/components/ui";
 import { ensureSessionKey, useCart } from "@/lib/cart";
 import { checkout, quoteCart, trackEvent } from "@/lib/commerce/fns";
+import { rememberOrderToken } from "@/lib/commerce/order-secret";
 import { money } from "@/lib/format";
 import { localize } from "@/lib/i18n/text";
 import { useT } from "@/lib/i18n/provider";
@@ -73,7 +74,8 @@ function CheckoutPage() {
               .then((result) => {
                 sessionStorage.removeItem("orris-idem");
                 clear();
-                void navigate({ to: "/order/$number", params: { number: result.number }, search: { token: result.token } });
+                rememberOrderToken(result.number, result.token);
+                void navigate({ to: "/order/$number", params: { number: result.number } });
               })
               .catch((err: unknown) => setError(err instanceof Error ? localize(err.message, tx) : t("checkout.failed")))
               .finally(() => setPending(false));

@@ -38,6 +38,7 @@ test("isolated database: proof, production pay refusal, and hold expiry", async 
   const { loadHome } = await vite.ssrLoadModule("/src/lib/commerce/catalog.server.ts");
 
   const { ensureSeeded } = await vite.ssrLoadModule("/src/lib/commerce/seed.server.ts");
+  const { isRetiredSeedToken } = await vite.ssrLoadModule("/src/lib/commerce/integrity.ts");
   const sql = (await getSql()) as {
     query: (text: string, params?: unknown[]) => Promise<Record<string, unknown>[]>;
   };
@@ -68,6 +69,8 @@ test("isolated database: proof, production pay refusal, and hold expiry", async 
 
   const before = await qty();
   const held = await checkout("11111111-1111-4111-8111-111111111111");
+  assert.equal(isRetiredSeedToken(held.token), false);
+  assert.equal(held.token.length >= 43, true);
   assert.equal(await qty(), before - 1);
 
   const byEmail = await viewOrder({ number: held.number, email });

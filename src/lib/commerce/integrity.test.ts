@@ -6,7 +6,10 @@ import {
   countsInBooks,
   demonstrationPaymentAllowed,
   holdIsDue,
+  isRetiredSeedToken,
+  mintOrderToken,
   orderProofAllows,
+  ownerMayBind,
   resolveOwnerEmail,
 } from "./integrity.ts";
 
@@ -58,6 +61,24 @@ test("production does not invent an owner from source code", () => {
   assert.equal(resolveOwnerEmail(null, "Owner@shop.test", true), "owner@shop.test");
   assert.equal(resolveOwnerEmail("kept@shop.test", "other@shop.test", true), "kept@shop.test");
   assert.equal(resolveOwnerEmail(null, undefined, false), "luckylynn230821@gmail.com");
+});
+
+test("only a verified Google sign-in can bind the owner", () => {
+  assert.equal(ownerMayBind(false, ["grok-google"]), false);
+  assert.equal(ownerMayBind(true, ["credential"]), false);
+  assert.equal(ownerMayBind(true, ["grok-x"]), false);
+  assert.equal(ownerMayBind(true, []), false);
+  assert.equal(ownerMayBind(true, ["grok-google"]), true);
+});
+
+test("new order tokens are not the published seed pattern", () => {
+  const first = mintOrderToken();
+  const second = mintOrderToken();
+  assert.equal(isRetiredSeedToken("seed-token-1"), true);
+  assert.equal(isRetiredSeedToken(first), false);
+  assert.notEqual(first, second);
+  assert.equal(first.length, 43);
+  assert.match(first, /^[A-Za-z0-9_-]+$/);
 });
 
 test("image uploads must match the declared type", () => {

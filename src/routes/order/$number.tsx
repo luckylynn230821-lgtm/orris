@@ -1,8 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { CustomerOrderCard, type CustomerOrder } from "@/components/store/customer-order";
 import { StoreShell } from "@/components/store/shell";
 import { lookupOrder } from "@/lib/commerce/fns";
+import { recallOrderToken, rememberOrderToken } from "@/lib/commerce/order-secret";
 import { useT } from "@/lib/i18n/provider";
 
 type Search = { token?: string; email?: string };
@@ -13,15 +14,28 @@ export const Route = createFileRoute("/order/$number")({
     email: typeof search.email === "string" ? search.email : undefined,
   }),
   component: OrderPage,
-  head: () => ({ meta: [{ title: "Order — MU" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({
+    meta: [
+      { title: "Order — MU" },
+      { name: "robots", content: "noindex" },
+      { name: "referrer", content: "no-referrer" },
+    ],
+  }),
 });
 
 function OrderPage() {
   const { t } = useT();
+  const navigate = useNavigate();
   const { number } = Route.useParams();
-  const { token } = Route.useSearch();
+  const { token: urlToken, email: urlEmail } = Route.useSearch();
   const [order, setOrder] = useState<CustomerOrder | null | undefined>(undefined);
   const [fresh, setFresh] = useState(false);
+  useEffect(() => {
+    if (!urlToken && !urlEmail) return;
+    if (urlToken) rememberOrderToken(number, urlToken);
+    void navigate({ to: "/order/$number", params: { number }, search: {}, replace: true });
+  }, [navigate, number, urlEmail, urlToken]);
+  const token = urlToken || recallOrderToken(number);
   const load = useCallback(() => lookupOrder({ data: { number, token } }), [number, token]);
   useEffect(() => {
     let live = true;

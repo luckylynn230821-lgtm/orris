@@ -3,6 +3,7 @@ import { useState } from "react";
 import { StoreShell } from "@/components/store/shell";
 import { Button, Field } from "@/components/ui";
 import { lookupOrder } from "@/lib/commerce/fns";
+import { rememberOrderToken } from "@/lib/commerce/order-secret";
 import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/orders")({
@@ -32,10 +33,10 @@ function LookupPage() {
                 setError(t("lookup.missing"));
                 return;
               }
+              rememberOrderToken(order.number, token);
               void navigate({
                 to: "/order/$number",
                 params: { number: order.number },
-                search: { token },
               });
             });
           }}

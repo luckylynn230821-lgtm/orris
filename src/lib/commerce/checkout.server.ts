@@ -1,6 +1,6 @@
 import { num } from "@/lib/format";
 import { userError } from "./errors";
-import { RESERVE_MINUTES, checkoutHitsAllowed } from "./integrity";
+import { RESERVE_MINUTES, checkoutHitsAllowed, mintOrderToken } from "./integrity";
 import { shippingQuote } from "./metrics";
 import { ensureSeeded } from "./seed.server";
 import { withTx, type Query } from "./tx.server";
@@ -196,7 +196,7 @@ export async function placeOrder(input: CheckoutInput, userId: string | null) {
     }
 
     const orderId = crypto.randomUUID();
-    const token = crypto.randomUUID();
+    const token = mintOrderToken();
     const seq = await query<{ n: number }>("select nextval('order_number_seq')::int as n");
     const number = `OR-${num(seq[0]?.n)}`;
 
