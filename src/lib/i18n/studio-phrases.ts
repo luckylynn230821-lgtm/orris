@@ -4,7 +4,8 @@ import type { Locale } from "./locales";
 export const studioPhrases: Record<Exclude<Locale, "en">, Record<string, string>> = {
   zh: {
     "A studio for the animals at home.": "给家里动物的一间工作室。",
-    "Complimentary shipping on studio orders over $120": "工作室订单满 $120 配送免费",
+    "Complimentary shipping on studio orders over $120": "测试模板，不是正式模板。",
+    "Test template, not an official shop.": "测试模板，不是正式模板。",
     "MU is a demonstration studio for dogs and cats. The name is a placeholder in settings, so it can be replaced.": "MU 是给狗和猫的演示工作室。名字是设置里的占位，可以换掉。",
     "Playful studio": "俏皮工作室",
     "Small hours, big company.": "很小的时辰，很大的陪伴。",
@@ -49,7 +50,8 @@ export const studioPhrases: Record<Exclude<Locale, "en">, Record<string, string>
   },
   "zh-Hant": {
     "A studio for the animals at home.": "給家裡動物的一間工作室。",
-    "Complimentary shipping on studio orders over $120": "工作室訂單滿 $120 配送免費",
+    "Complimentary shipping on studio orders over $120": "測試模板，不是正式模板。",
+    "Test template, not an official shop.": "測試模板，不是正式模板。",
     "MU is a demonstration studio for dogs and cats. The name is a placeholder in settings, so it can be replaced.": "MU 是給狗和貓的示範工作室。名字是設定裡的佔位，可以換掉。",
     "Playful studio": "俏皮工作室",
     "Small hours, big company.": "很小的時辰，很大的陪伴。",
@@ -94,7 +96,8 @@ export const studioPhrases: Record<Exclude<Locale, "en">, Record<string, string>
   },
   ja: {
     "A studio for the animals at home.": "家にいる動物のためのスタジオ。",
-    "Complimentary shipping on studio orders over $120": "スタジオの注文が $120 を超えると配送料は無料です",
+    "Complimentary shipping on studio orders over $120": "テスト用のテンプレートです。正式な店舗ではありません。",
+    "Test template, not an official shop.": "テスト用のテンプレートです。正式な店舗ではありません。",
     "MU is a demonstration studio for dogs and cats. The name is a placeholder in settings, so it can be replaced.": "MU は犬と猫のためのデモ用スタジオです。名前は設定の仮称なので、替えられます。",
     "Playful studio": "遊び心のあるスタジオ",
     "Small hours, big company.": "小さな時間、大きな相棒。",
@@ -139,7 +142,8 @@ export const studioPhrases: Record<Exclude<Locale, "en">, Record<string, string>
   },
   ko: {
     "A studio for the animals at home.": "집에 있는 동물을 위한 스튜디오.",
-    "Complimentary shipping on studio orders over $120": "스튜디오 주문이 $120 를 넘으면 배송비는 없습니다",
+    "Complimentary shipping on studio orders over $120": "테스트 템플릿입니다. 정식 매장이 아닙니다.",
+    "Test template, not an official shop.": "테스트 템플릿입니다. 정식 매장이 아닙니다.",
     "MU is a demonstration studio for dogs and cats. The name is a placeholder in settings, so it can be replaced.": "MU는 개와 고양이를 위한 데모 스튜디오입니다. 이름은 설정의 자리표시자라 바꿀 수 있습니다.",
     "Playful studio": "장난기 있는 스튜디오",
     "Small hours, big company.": "작은 시간, 큰 동행.",

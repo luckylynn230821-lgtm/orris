@@ -354,8 +354,8 @@ async function seedAll(query: Query) {
 
 /** Replace the fake mailbox and the two-day shipping claim on a shop that already seeded. */
 async function dropShipPromise(query: Query) {
-  const rows = await query<{ support_email: string; benefits: unknown }>(
-    "select support_email, benefits from store_settings where id = 1",
+  const rows = await query<{ support_email: string; benefits: unknown; announcement: string }>(
+    "select support_email, benefits, announcement from store_settings where id = 1",
   );
   const row = rows[0];
   if (!row) return;
@@ -370,10 +370,12 @@ async function dropShipPromise(query: Query) {
     return SEED_SETTINGS.benefits[2];
   });
   const email = row.support_email === "studio@mu.example" ? SEED_SETTINGS.supportEmail : row.support_email;
-  if (!changed && email === row.support_email) return;
+  const announcement =
+    row.announcement === "Complimentary shipping on studio orders over $120" ? SEED_SETTINGS.announcement : row.announcement;
+  if (!changed && email === row.support_email && announcement === row.announcement) return;
   await query(
-    "update store_settings set support_email = $1, benefits = $2::jsonb, updated_at = now() where id = 1",
-    [email, JSON.stringify(next)],
+    "update store_settings set support_email = $1, benefits = $2::jsonb, announcement = $3, updated_at = now() where id = 1",
+    [email, JSON.stringify(next), announcement],
   );
 }
 

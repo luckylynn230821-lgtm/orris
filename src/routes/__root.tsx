@@ -18,7 +18,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "MU" },
+      { title: "MU — Test template, not an official shop" },
       {
         name: "description",
         content: "MU — a studio for the animals at home. Everyday objects for dogs and cats.",

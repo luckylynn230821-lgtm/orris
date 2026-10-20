@@ -10,7 +10,7 @@ export const Route = createFileRoute("/")({
   loader: () => getHome(),
   head: ({ loaderData }) => ({
     meta: [
-      { title: `${loaderData?.settings.brandName ?? "MU"} — ${loaderData?.settings.tagline ?? "A studio for the animals at home."}` },
+      { title: `${loaderData?.settings.brandName ?? "MU"} — Test template, not an official shop` },
       { name: "description", content: loaderData?.settings.tagline ?? "MU" },
     ],
   }),

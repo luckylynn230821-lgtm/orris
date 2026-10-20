@@ -56,8 +56,9 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
           <button className="md:hidden" aria-label={t("nav.menu")} onClick={() => setMenu(true)}>
             <Menu className="size-5" />
           </button>
-          <Link to="/" aria-label={chrome?.brandName || "MU"}>
+          <Link to="/" aria-label={chrome?.brandName || "MU"} className="inline-flex items-center gap-2">
             <Mark name={chrome?.brandName || "MU"} />
+            <span className="rounded-full border border-ink/15 px-2 py-1 text-[10px] tracking-[0.14em] text-ash uppercase">{t("nav.testTitle")}</span>
           </Link>
           <nav className="ml-6 hidden items-center gap-6 text-sm md:flex">
             <Link to="/shop" className="hover:text-ash">{t("nav.shop")}</Link>

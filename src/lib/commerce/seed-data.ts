@@ -251,7 +251,7 @@ export const SEED_PRODUCTS: SeedProduct[] = [
 export const SEED_SETTINGS = {
   brandName: "MU",
   tagline: "A studio for the animals at home.",
-  announcement: "Complimentary shipping on studio orders over $120",
+  announcement: "Test template, not an official shop.",
   supportEmail: "luckylynn230821@gmail.com",
   shippingFlatCents: 800,
   expressShippingCents: 1800,
