@@ -105,13 +105,33 @@ function createNeonSql(): Promise<Sql> {
   return globalRef.__pgSqlPromise__;
 }
 
+async function pgliteAsset(name: "pglite.data" | "pglite.wasm" | "initdb.wasm"): Promise<Uint8Array> {
+  const { existsSync, readFileSync } = await import("node:fs");
+  const { createRequire } = await import("node:module");
+  const { dirname, join } = await import("node:path");
+  // Copied next to the Vercel function. The bundled `new URL("./pglite.data")`
+  // path looks in /var/task/_libs and the file is not emitted there.
+  const packed = join(process.cwd(), "pglite", name);
+  if (existsSync(packed)) return readFileSync(packed);
+  const nodeRequire = createRequire(import.meta.url);
+  return readFileSync(join(dirname(nodeRequire.resolve("@electric-sql/pglite")), name));
+}
+
 async function createPgliteSql(): Promise<Sql> {
   // Embedded Postgres, imported on demand so it never loads on the Neon path.
   // One in-memory instance per process, shared across HMR module instances, so
   // data survives source edits (it resets on dev-server restart).
   globalRef.__pgliteInstance__ ??= (async () => {
     const { PGlite } = await import("@electric-sql/pglite");
+    const [data, wasm, initdb] = await Promise.all([
+      pgliteAsset("pglite.data"),
+      pgliteAsset("pglite.wasm"),
+      pgliteAsset("initdb.wasm"),
+    ]);
     const pg = new PGlite({
+      fsBundle: new Blob([data]),
+      pgliteWasmModule: await WebAssembly.compile(wasm),
+      initdbWasmModule: await WebAssembly.compile(initdb),
       parsers: {
         [OID_INT8]: Number,
         [OID_DATE]: identity,
