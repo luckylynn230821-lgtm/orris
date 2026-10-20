@@ -38,16 +38,6 @@ const shieldWrite = createMiddleware({ type: "function" }).server(async ({ next 
   }
 });
 
-const serverFn = createServerFn;
-
-function readFn() {
-  return serverFn({ method: "GET" }).middleware([shieldRead]);
-}
-
-function writeFn() {
-  return serverFn({ method: "POST" }).middleware([shieldWrite]);
-}
-
 function guard<T>(fn: () => Promise<T>): Promise<T> {
   return fn().catch((error: unknown) => {
     if (isCommerceError(error)) throw error;
@@ -61,17 +51,17 @@ const lineSchema = z.object({
   qty: z.number().int().min(1).max(10),
 });
 
-export const getChrome = readFn().handler(async () => {
+export const getChrome = createServerFn({ method: "GET" }).middleware([shieldRead]).handler(async () => {
   const { loadChrome } = await import("./catalog.server");
   return loadChrome();
 });
 
-export const getHome = readFn().handler(async () => {
+export const getHome = createServerFn({ method: "GET" }).middleware([shieldRead]).handler(async () => {
   const { loadHome } = await import("./catalog.server");
   return loadHome();
 });
 
-export const getShop = readFn()
+export const getShop = createServerFn({ method: "GET" }).middleware([shieldRead])
   .validator((input: unknown) =>
     z
       .object({
@@ -90,21 +80,21 @@ export const getShop = readFn()
     return loadShop(data);
   });
 
-export const getProduct = readFn()
+export const getProduct = createServerFn({ method: "GET" }).middleware([shieldRead])
   .validator((input: unknown) => z.object({ slug: z.string().min(1) }).parse(input))
   .handler(async ({ data }) => {
     const { loadProduct } = await import("./catalog.server");
     return loadProduct(data.slug);
   });
 
-export const quoteCart = writeFn()
+export const quoteCart = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .validator((input: unknown) => z.object({ lines: z.array(lineSchema).max(30) }).parse(input))
   .handler(async ({ data }) => {
     const { quoteLines } = await import("./catalog.server");
     return quoteLines(data.lines);
   });
 
-export const subscribeNewsletter = writeFn()
+export const subscribeNewsletter = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .validator((input: unknown) =>
     z.object({ email: z.string().trim().toLowerCase().email() }).parse(input),
   )
@@ -113,7 +103,7 @@ export const subscribeNewsletter = writeFn()
     return subscribeEmail(data.email);
   });
 
-export const trackEvent = writeFn()
+export const trackEvent = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .validator((input: unknown) =>
     z
       .object({
@@ -128,7 +118,7 @@ export const trackEvent = writeFn()
     return track(data);
   });
 
-export const lookupOrder = writeFn()
+export const lookupOrder = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([optionalUser])
   .validator((input: unknown) =>
     z
@@ -144,7 +134,7 @@ export const lookupOrder = writeFn()
     return viewOrder({ ...data, sessionEmail: context.email });
   });
 
-export const checkout = writeFn()
+export const checkout = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([optionalUser])
   .validator((input: unknown) =>
     z
@@ -167,7 +157,7 @@ export const checkout = writeFn()
     return guard(() => placeOrder(data, context.userId));
   });
 
-export const myOrders = readFn()
+export const myOrders = createServerFn({ method: "GET" }).middleware([shieldRead])
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const { listMyOrders } = await import("./customer.server");
@@ -183,7 +173,7 @@ function proofOf(data: { token?: string }, email: string | null) {
   return { email, token: data.token ?? null };
 }
 
-export const customerPay = writeFn()
+export const customerPay = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([optionalUser])
   .validator((input: unknown) => proofSchema.parse(input))
   .handler(async ({ data, context }) => {
@@ -191,7 +181,7 @@ export const customerPay = writeFn()
     return guard(() => payOrder(data.number, proofOf(data, context.email)));
   });
 
-export const customerReceive = writeFn()
+export const customerReceive = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([optionalUser])
   .validator((input: unknown) => proofSchema.parse(input))
   .handler(async ({ data, context }) => {
@@ -199,7 +189,7 @@ export const customerReceive = writeFn()
     return guard(() => receiveOrder(data.number, proofOf(data, context.email)));
   });
 
-export const customerReview = writeFn()
+export const customerReview = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([optionalUser])
   .validator((input: unknown) =>
     proofSchema.extend({ rating: z.number().int().min(1).max(5), body: z.string().max(500) }).parse(input),
@@ -209,7 +199,7 @@ export const customerReview = writeFn()
     return guard(() => reviewOrder(data.number, proofOf(data, context.email), data.rating, data.body));
   });
 
-export const customerService = writeFn()
+export const customerService = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([optionalUser])
   .validator((input: unknown) => proofSchema.extend({ reason: z.string().trim().min(2).max(300) }).parse(input))
   .handler(async ({ data, context }) => {
@@ -224,21 +214,21 @@ const rangeSchema = z.object({
   includeDemo: z.boolean().optional(),
 });
 
-export const adminSession = readFn()
+export const adminSession = createServerFn({ method: "GET" }).middleware([shieldRead])
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const { deskSession } = await import("./admin.server");
     return guard(() => deskSession(context.userId));
   });
 
-export const adminTeam = readFn()
+export const adminTeam = createServerFn({ method: "GET" }).middleware([shieldRead])
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const { listTeam } = await import("./admin.server");
     return guard(() => listTeam(context.userId));
   });
 
-export const adminGrant = writeFn()
+export const adminGrant = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) =>
     z.object({ email: z.string().trim().email().max(160), role: z.enum(["manager", "staff"]) }).parse(input),
@@ -248,7 +238,7 @@ export const adminGrant = writeFn()
     return guard(() => grantSeat(context.userId, data));
   });
 
-export const adminRevoke = writeFn()
+export const adminRevoke = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) => z.object({ email: z.string().trim().email().max(160) }).parse(input))
   .handler(async ({ data, context }) => {
@@ -256,7 +246,7 @@ export const adminRevoke = writeFn()
     return guard(() => revokeSeat(context.userId, data.email));
   });
 
-export const adminAnalytics = writeFn()
+export const adminAnalytics = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) => rangeSchema.parse(input))
   .handler(async ({ data, context }) => {
@@ -266,14 +256,14 @@ export const adminAnalytics = writeFn()
     return loadAnalytics({ ...data, includeDemo: data.includeDemo !== false });
   });
 
-export const adminProducts = readFn()
+export const adminProducts = createServerFn({ method: "GET" }).middleware([shieldRead])
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const { adminCatalog } = await import("./admin.server");
     return guard(() => adminCatalog(context.userId));
   });
 
-export const adminGetProduct = readFn()
+export const adminGetProduct = createServerFn({ method: "GET" }).middleware([shieldRead])
   .middleware([authMiddleware])
   .validator((input: unknown) => z.object({ id: z.string().min(1) }).parse(input))
   .handler(async ({ data, context }) => {
@@ -295,7 +285,7 @@ const variantSchema = z.object({
   inventoryQty: z.number().int().min(0),
 });
 
-export const adminSaveProduct = writeFn()
+export const adminSaveProduct = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) =>
     z
@@ -319,7 +309,7 @@ export const adminSaveProduct = writeFn()
     return guard(() => saveProduct(context.userId, data));
   });
 
-export const adminBulk = writeFn()
+export const adminBulk = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) =>
     z
@@ -336,7 +326,7 @@ export const adminBulk = writeFn()
     return guard(() => bulkProducts(context.userId, data));
   });
 
-export const adminSaveImage = writeFn()
+export const adminSaveImage = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) =>
     z
@@ -353,7 +343,7 @@ export const adminSaveImage = writeFn()
     return guard(() => saveImage(context.userId, data));
   });
 
-export const adminUpdateImage = writeFn()
+export const adminUpdateImage = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) =>
     z
@@ -370,21 +360,21 @@ export const adminUpdateImage = writeFn()
     return guard(() => updateImage(context.userId, data));
   });
 
-export const adminFloor = readFn()
+export const adminFloor = createServerFn({ method: "GET" }).middleware([shieldRead])
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const { managerFloor } = await import("./admin.server");
     return guard(() => managerFloor(context.userId));
   });
 
-export const adminInventory = readFn()
+export const adminInventory = createServerFn({ method: "GET" }).middleware([shieldRead])
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const { listInventory } = await import("./admin.server");
     return guard(() => listInventory(context.userId));
   });
 
-export const adminAdjustStock = writeFn()
+export const adminAdjustStock = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) =>
     z.object({ variantId: z.string(), delta: z.number().int(), note: z.string().max(200) }).parse(input),
@@ -394,7 +384,7 @@ export const adminAdjustStock = writeFn()
     return guard(() => adjustStock(context.userId, data));
   });
 
-export const adminOrders = readFn()
+export const adminOrders = createServerFn({ method: "GET" }).middleware([shieldRead])
   .middleware([authMiddleware])
   .validator((input: unknown) => z.object({ q: z.string().optional() }).parse(input ?? {}))
   .handler(async ({ data, context }) => {
@@ -402,7 +392,7 @@ export const adminOrders = readFn()
     return guard(() => listOrders(context.userId, data.q ?? ""));
   });
 
-export const adminOrder = readFn()
+export const adminOrder = createServerFn({ method: "GET" }).middleware([shieldRead])
   .middleware([authMiddleware])
   .validator((input: unknown) => z.object({ id: z.string().min(1) }).parse(input))
   .handler(async ({ data, context }) => {
@@ -410,7 +400,7 @@ export const adminOrder = readFn()
     return guard(() => orderDetail(context.userId, data.id));
   });
 
-export const adminFulfill = writeFn()
+export const adminFulfill = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) =>
     z.object({ id: z.string(), carrier: z.string().max(80), tracking: z.string().max(80), carrierId: z.string().optional() }).parse(input),
@@ -420,7 +410,7 @@ export const adminFulfill = writeFn()
     return guard(() => fulfillOrder(context.userId, data));
   });
 
-export const adminRefund = writeFn()
+export const adminRefund = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) =>
     z
@@ -437,7 +427,7 @@ export const adminRefund = writeFn()
     return guard(() => refundOrder(context.userId, data));
   });
 
-export const adminCancel = writeFn()
+export const adminCancel = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) => z.object({ id: z.string() }).parse(input))
   .handler(async ({ data, context }) => {
@@ -445,7 +435,7 @@ export const adminCancel = writeFn()
     return guard(() => cancelOrder(context.userId, data.id));
   });
 
-export const adminResolveService = writeFn()
+export const adminResolveService = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) =>
     z.object({ id: z.string().min(1), action: z.enum(["refund", "reject"]), restock: z.boolean() }).parse(input),
@@ -455,7 +445,7 @@ export const adminResolveService = writeFn()
     return guard(() => resolveService(context.userId, data));
   });
 
-export const adminAccept = writeFn()
+export const adminAccept = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) => z.object({ id: z.string().min(1) }).parse(input))
   .handler(async ({ data, context }) => {
@@ -463,7 +453,7 @@ export const adminAccept = writeFn()
     return guard(() => acceptOrder(context.userId, data.id));
   });
 
-export const adminAcceptMany = writeFn()
+export const adminAcceptMany = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) => z.object({ ids: z.array(z.string().min(1)).max(50) }).parse(input))
   .handler(async ({ data, context }) => {
@@ -471,14 +461,14 @@ export const adminAcceptMany = writeFn()
     return guard(() => acceptOrders(context.userId, data.ids));
   });
 
-export const adminCarriers = readFn()
+export const adminCarriers = createServerFn({ method: "GET" }).middleware([shieldRead])
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const { listCarriers } = await import("./admin.server");
     return guard(() => listCarriers(context.userId));
   });
 
-export const adminSaveCarrier = writeFn()
+export const adminSaveCarrier = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) =>
     z.object({
@@ -493,7 +483,7 @@ export const adminSaveCarrier = writeFn()
     return guard(() => saveCarrier(context.userId, data));
   });
 
-export const adminBroadcast = writeFn()
+export const adminBroadcast = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) =>
     z.object({ subject: z.string().trim().min(2).max(140), body: z.string().trim().min(2).max(2000) }).parse(input),
@@ -503,21 +493,21 @@ export const adminBroadcast = writeFn()
     return guard(() => broadcastCustomers(context.userId, data));
   });
 
-export const adminCustomers = readFn()
+export const adminCustomers = createServerFn({ method: "GET" }).middleware([shieldRead])
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const { listCustomers } = await import("./admin.server");
     return guard(() => listCustomers(context.userId));
   });
 
-export const adminSettings = readFn()
+export const adminSettings = createServerFn({ method: "GET" }).middleware([shieldRead])
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const { loadSettings } = await import("./admin.server");
     return guard(() => loadSettings(context.userId));
   });
 
-export const adminSaveSettings = writeFn()
+export const adminSaveSettings = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) => z.record(z.string(), z.unknown()).parse(input))
   .handler(async ({ data, context }) => {
@@ -525,7 +515,7 @@ export const adminSaveSettings = writeFn()
     return guard(() => saveSettings(context.userId, data as never));
   });
 
-export const adminImport = writeFn()
+export const adminImport = createServerFn({ method: "POST" }).middleware([shieldWrite])
   .middleware([authMiddleware])
   .validator((input: unknown) => z.object({ csv: z.string().max(200_000) }).parse(input))
   .handler(async ({ data, context }) => {
@@ -533,7 +523,7 @@ export const adminImport = writeFn()
     return guard(() => importCsv(context.userId, data.csv));
   });
 
-export const publishedSlugs = readFn().handler(async () => {
+export const publishedSlugs = createServerFn({ method: "GET" }).middleware([shieldRead]).handler(async () => {
   const { loadPublished, readSettings } = await import("./catalog.server");
   const [products, settings] = await Promise.all([loadPublished(), readSettings()]);
   return {
