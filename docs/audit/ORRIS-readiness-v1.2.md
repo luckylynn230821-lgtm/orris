@@ -76,8 +76,9 @@ PASS。见上表。那次部署不包含 `0007`。包含 `0007` 的部署记录�
 
 - 沙箱里的 `npm test` 曾经通过，是因为本机有被 gitignore 的 `.grok/skills/og`。GitHub 检出没有这个目录。
 - Actions [39453472144](https://github.com/luckylynn230821-lgtm/orris/actions/runs/39453472144)（`ad934c6`）和 [39453673865](https://github.com/luckylynn230821-lgtm/orris/actions/runs/39453673865)（`6d8df16`）都失败在脚本测试：198 项里 4 项 `ENOENT`（`brand-check.test.mjs` 三处、`write-atomic.test.mjs` 一处）。类型检查和 Lint 在那两次运行里已经通过。商业集成测试和 Playwright 没有跑到。
-- 技能文档不在商店仓库里。缺文件时跳过那两处技能核对，仓库里的 `AGENTS.md` 约束仍然检查。没有 `.grok` 的检出上，脚本测试 196 通过、2 跳过、0 失败。这只证明沙箱模拟，不是这次提交的 GitHub 结论。
-- `npx tsc --noEmit` 与 `npx eslint .` 在沙箱通过过。本地 Playwright 2 项通过。生产 Playwright 的结果写在文末，只覆盖已经部署的 `ad934c6`。
+- 没有 `.grok` 的检出上，脚本测试 196 通过、2 跳过、0 失败。
+- GitHub Actions [39454287946](https://github.com/luckylynn230821-lgtm/orris/actions/runs/39454287946) 在 SHA `d0a0ffe678ece91735a552127965d32a33d2ee05` 上成功：类型检查、Lint、`npm test`、本地 Playwright 都通过。这是自动化层的 GitHub 结论，不是生产业务验收。
+- 沙箱里的 `npx tsc --noEmit` 与 `npx eslint .` 此前通过。本地 Playwright 2 项通过。生产 Playwright 的结果写在文末，只覆盖已经部署的 `ad934c6`。
 
 ## P1 设计（未启用）
 
@@ -103,7 +104,7 @@ PASS。见上表。那次部署不包含 `0007`。包含 `0007` 的部署记录�
 
 ### CI
 
-`.github/workflows/ci.yml` 在 push 和 pull request 上运行类型检查、Lint、`npm test` 和本地 Playwright。CI 把 `DATABASE_URL` 设成空字符串，隔离写测试因此不会碰到 Neon。不跑生产 Playwright，以免把线上验收和生产部署混在一起。前两次 push 的结论是失败，原因在上面。这次提交之后的 Actions 结果要等运行结束再记。沙箱通过不等于 GitHub CI 通过。
+`.github/workflows/ci.yml` 在 push 和 pull request 上运行类型检查、Lint、`npm test` 和本地 Playwright。CI 把 `DATABASE_URL` 设成空字符串，隔离写测试因此不会碰到 Neon。不跑生产 Playwright，以免把线上验收和生产部署混在一起。前两次 push 失败。第三次 [39454287946](https://github.com/luckylynn230821-lgtm/orris/actions/runs/39454287946) 成功。一次成功的 CI 不等于生产业务验收通过。
 
 ## 剩余风险
 
@@ -114,8 +115,7 @@ PASS。见上表。那次部署不包含 `0007`。包含 `0007` 的部署记录�
 5. 没有 MFA，没有独立 Cron，图片仍在数据库，真实收款未接。
 6. 网关签名函数没有挂到公网，也还没有用服务商的真实测试密钥演练。
 7. 备份流程没有在生产副本上演练。
-8. 隔离测试通过不等于生产业务验收通过。
-9. GitHub Actions 还没有一次成功记录。前两次失败是脚手架测试去读未入库的技能目录。源码已改为缺文件就跳过；在 Actions 对这次提交给出成功之前，自动化层的 GitHub 结论仍未关闭。
+8. 隔离测试和 GitHub CI 通过，不等于生产业务验收通过。GitHub 上第一次成功是 [39454287946](https://github.com/luckylynn230821-lgtm/orris/actions/runs/39454287946)。
 
 ## 部署后复核
 
@@ -130,5 +130,5 @@ PASS。见上表。那次部署不包含 `0007`。包含 `0007` 的部署记录�
 | 生产已登录查单、生产演示付款、生产报表勾选 | BLOCKED | 没有创建会话，也没有插入未付款订单 |
 | 备份演练 | BLOCKED | 没有导出生产数据副本 |
 
-源码、沙箱自动化测试、`ad934c6` 的生产部署，以及公开凭证失效，是通过的。GitHub Actions 对 `ad934c6` 和 `6d8df16` 是失败。需要真实登录或真实订单的生产业务验收仍然是 BLOCKED。
+源码、沙箱自动化测试、GitHub CI（`d0a0ffe`，运行 39454287946），以及 `ad934c6` 的生产部署和公开凭证失效，是通过的。需要真实登录或真实订单的生产业务验收仍然是 BLOCKED。记下这次 CI 的文档提交会再触发一次 Actions；那次运行的结论以 Actions 页面为准，不提前写成通过。
 
